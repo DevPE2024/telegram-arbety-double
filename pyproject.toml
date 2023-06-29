@@ -11,6 +11,9 @@ python = "^3.11"
 selenium = "^4.10.0"
 webdriver-manager = "^3.8.6"
 pydantic = "^1.10.9"
+pyrogram = "^2.0.106"
+tgcrypto = "^1.2.5"
+pyromod = "^2.0.0"
 
 
 [tool.poetry.group.dev.dependencies]

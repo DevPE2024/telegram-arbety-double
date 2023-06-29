@@ -1,3 +1,4 @@
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import Firefox
 
 from arbety_double_bot.common import click, find_element, find_elements
@@ -23,3 +24,11 @@ def make_login(driver: Firefox, email: str, password: str) -> None:
     find_element(driver, '#email').send_keys(email)
     find_element(driver, '#current-password').send_keys(password)
     click(driver, 'button.button-primary:not(.register)')
+
+
+def is_logged(driver: Firefox) -> bool:
+    try:
+        find_element(driver, '.user-name')
+        return True
+    except TimeoutException:
+        return False
