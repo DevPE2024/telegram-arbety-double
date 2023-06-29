@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "arbety-double-bot"
+version = "0.1.0"
+description = ""
+authors = ["riguima <richard.alexsander.guima@gmail.com>"]
+readme = "README.md"
+packages = [{include = "arbety_double_bot"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+selenium = "^4.10.0"
+webdriver-manager = "^3.8.6"
+pydantic = "^1.10.9"
+
+
+[tool.poetry.group.dev.dependencies]
+blue = "^0.9.1"
+isort = "^5.12.0"
+taskipy = "^1.11.0"
+python-lsp-server = "^1.7.4"
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = "."
+
+[tool.isort]
+profile = "black"
+line_length = 79
+
+[tool.taskipy.tasks]
+lint = "blue --check --diff . && isort --check --diff ."
+test = "pytest -s -x --cov=cray_freelas_bot -vv"
+post_test = "coverage html"
