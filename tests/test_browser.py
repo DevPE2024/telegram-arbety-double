@@ -26,7 +26,7 @@ def test_make_login(driver: Firefox) -> None:
 
 def test_get_signals(driver: Firefox) -> None:
     signals = get_signals(driver)
-    assert len(signals) == 20
+    assert len(signals.split(' - ')) == 20
 
 
 def test_to_bet(driver: Firefox) -> None:

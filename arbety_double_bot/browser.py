@@ -19,17 +19,17 @@ def get_signals(driver: Firefox) -> str:
     return ' - '.join(result)
 
 
-def to_bet(driver: Firefox, strategy: Strategy) -> None:
+def to_bet(driver: Firefox, value: float, bet_color: str) -> None:
     go_to_url(driver, 'https://www.arbety.com/games/double')
-    find_element(driver, '#betValue').send_keys(str(strategy.value))
-    click(driver, f'.ball-{strategy.bet_color}')
+    find_element(driver, '#betValue').send_keys(str(value))
+    click(driver, f'.ball-{bet_color}')
     click(driver, '.button-primary')
 
 
-def make_login(driver: Firefox, user: User) -> None:
+def make_login(driver: Firefox, email: str, password: str) -> None:
     go_to_url(driver, 'https://www.arbety.com/home?modal=login')
-    find_element(driver, '#email').send_keys(user.email)
-    find_element(driver, '#current-password').send_keys(user.password)
+    find_element(driver, '#email').send_keys(email)
+    find_element(driver, '#current-password').send_keys(password)
     click(driver, 'button.button-primary:not(.register)')
 
 

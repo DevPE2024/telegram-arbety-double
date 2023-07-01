@@ -36,7 +36,7 @@ if __name__ == '__main__':
     while True:
         for strategy in get_strategies():
             if re.compile(f'{strategy.strategy}$').findall(signals):
-                to_bet(create_driver(), strategy)
+                to_bet(create_driver(), strategy.value, strategy.bet_color)
                 send_bet_confirmation_message(app, strategy)
             if signals != get_signals(signals_driver):
                 signals = get_signals(signals_driver)

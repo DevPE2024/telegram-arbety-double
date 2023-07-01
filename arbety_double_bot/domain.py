@@ -15,4 +15,4 @@ class Strategy(BaseModel):
     strategy: str
     bet_color: str
     value: float
-    user: User
+    user: Optional[User]

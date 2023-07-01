@@ -32,7 +32,7 @@ def create_app() -> Client:
         driver = create_driver()
         make_login(driver, email.text, password.text)
         if is_logged(driver):
-            create_user(email.text, password.text)
+            create_user(message.chat.username, email.text, password.text)
             await client.send_message(message.chat.id, 'Login cadastrado')
         else:
             await client.send_message(message.chat.id, 'Login inválido')
@@ -48,15 +48,19 @@ def create_app() -> Client:
                 'der essa sequência ele vai apostar no vermelho'
             ),
         )
-        strategy_regex = re.compile()
         value = await client.ask(
             'Digite o valor para a aposta, exemplo: 50 ou 50,00'
         )
         try:
+            strategy_regex = re.compile(r'[rwg]( - [rwg])+ = [rwg]')
             if strategy_regex.findall(strategy.text):
                 await strategy.reply('Estratégia adicionada')
+                strategy_text, bet_color = strategy.text.split(' = ')
+                user_id = get_user_by_name(message.chat.username).id
                 create_strategy(
-                    strategy.text,
+                    user_id,
+                    strategy_text,
+                    bet_color,
                     float(value.text.replace(',', '.')),
                 )
             else:
