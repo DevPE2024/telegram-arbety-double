@@ -42,7 +42,8 @@ def create_app() -> Client:
             message.chat.id,
             (
                 'Digite sua estratégia utilizando r (red), g (green) e w '
-                '(white), exemplo: r - r - g'
+                '(white), exemplo: r - r - g = r\nNesse exemplo sempre que '
+                'der essa sequência ele vai apostar no vermelho'
             ),
         )
         strategy_regex = re.compile()
@@ -50,10 +51,12 @@ def create_app() -> Client:
             'Digite o valor para a aposta, exemplo: 50 ou 50,00'
         )
         try:
-            float(value.text.replace(',', '.'))
             if strategy_regex.findall(strategy.text):
                 await strategy.reply('Estratégia adicionada')
-                create_strategy(strategy.text)
+                create_strategy(
+                    strategy.text,
+                    float(value.text.replace(',', '.')),
+                )
             else:
                 await strategy.reply('Estratégia definida incorretamente')
         except ValueError:
