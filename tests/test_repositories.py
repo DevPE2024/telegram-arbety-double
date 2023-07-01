@@ -1,4 +1,10 @@
-from arbety_double_bot.repositories import create_strategy, create_user
+from arbety_double_bot.domain import Strategy, User
+from arbety_double_bot.repositories import (
+    create_strategy,
+    create_user,
+    get_strategies_from_user,
+    get_user_by_email,
+)
 
 
 def test_create_user() -> None:
@@ -12,6 +18,6 @@ def test_create_user() -> None:
 def test_create_strategy() -> None:
     strategy = 'r - r - g = g'
     value = 50
-    create_strategy(user_id=1, strategy, value)
+    create_strategy(1, strategy, value)
     expected = Strategy(strategy=strategy, value=value)
-    get_strategies_from_user(user_id=1) == [expected]
+    get_strategies_from_user(1) == [expected]

@@ -1,5 +1,7 @@
 from typing import Union
 
+from sqlalchemy import select
+
 from arbety_double_bot.database import Session
 from arbety_double_bot.domain import Strategy, User
 from arbety_double_bot.models import StrategyModel, UserModel
@@ -18,9 +20,11 @@ def get_user_by_email(email: str) -> Union[User, None]:
         return User(id=model.id, email=model.email, password=model.password)
 
 
-def create_strategy(strategy: str, value: float) -> None:
+def create_strategy(user_id: int, strategy: str, value: float) -> None:
     with Session() as session:
-        session.add(StrategyModel(strategy=strategy, value=value))
+        session.add(
+            StrategyModel(strategy=strategy, value=value, user_id=user_id),
+        )
         session.commit()
 
 
