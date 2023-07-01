@@ -93,8 +93,8 @@ def create_app() -> Client:
 
     @app.on_message(filters.command('listar'))
     async def show_strategies(client: Client, message: Message) -> None:
-        text_format = '{:<5}{:<20}{:<7}{:<20}\n'
-        text = text_format.format('ID', 'Estratégia', 'Cor', 'Valor')
+        text_format = '{:<4}{:<18}{:<4}{}\n'
+        text = 'ID Estratégia Cor Valor\n'
         for strategy in get_strategies():
             if strategy.user.name == message.chat.username:
                 text += text_format.format(
