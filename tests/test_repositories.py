@@ -3,7 +3,7 @@ from arbety_double_bot.repositories import (
     create_strategy,
     create_user,
     get_strategies_from_user,
-    get_user_by_email,
+    get_users,
 )
 
 
@@ -12,7 +12,7 @@ def test_create_user() -> None:
     password = 'Richard123'
     create_user(email, password)
     expected = User(id=1, email=email, password=password)
-    get_user_by_email(email) == expected
+    get_users()[0] == expected
 
 
 def test_create_strategy() -> None:

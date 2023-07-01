@@ -13,11 +13,13 @@ def create_user(email: str, password: str) -> None:
         session.commit()
 
 
-def get_user_by_email(email: str) -> Union[User, None]:
+def get_users() -> list[User]:
     with Session() as session:
-        query = select(UserModel).where(UserModel.email == email)
-        model = session.scalars(query).first()
-        return User(id=model.id, email=model.email, password=model.password)
+        query = select(UserModel)
+        return [
+            User(id=u.id, email=u.email, password=u.password)
+            for u in session.scalars(query).all()
+        ]
 
 
 def create_strategy(user_id: int, strategy: str, value: float) -> None:

@@ -2,22 +2,16 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import Firefox
 
 from arbety_double_bot.common import click, find_element, find_elements
-from arbety_double_bot.domain import Signal
 
 
-def get_signals(driver: Firefox) -> list[Signal]:
+def get_signals(driver: Firefox) -> list[str]:
     url = 'https://www.arbety.com/games/double'
     if driver.current_url != url:
         driver.get(url)
     result = []
     for e in range(20):
         signals = find_elements(driver, '.item')
-        result.append(
-            Signal(
-                value=int(signals[e].get_attribute('textContent')),
-                color=signals[e].get_attribute('class').split()[-1],
-            )
-        )
+        result.append(signals[e].get_attribute('class').split()[-1][0])
     return result
 
 

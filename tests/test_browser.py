@@ -30,6 +30,6 @@ def test_get_signals(driver: Firefox) -> None:
 
 
 def test_to_bet(driver: Firefox) -> None:
-    to_bet(driver, 1, 'red')
-    to_bet(driver, 1, 'white')
-    to_bet(driver, 1, 'green')
+    to_bet(driver, 1, 'r')
+    to_bet(driver, 1, 'w')
+    to_bet(driver, 1, 'g')
