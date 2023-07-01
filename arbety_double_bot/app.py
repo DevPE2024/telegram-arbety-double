@@ -12,6 +12,7 @@ from arbety_double_bot.repositories import (
     create_strategy,
     create_user,
     edit_user,
+    get_strategies,
     get_user_by_name,
 )
 
@@ -30,8 +31,9 @@ def create_app() -> Client:
         await message.reply(
             (
                 '/login - Para cadastrar o login da plataforma arbety\n'
-                '/adicionar_estrategia - Para adicionar uma estratégia, junto '
-                'com o valor de aposta'
+                '/adicionar - Para adicionar uma estratégia, junto '
+                'com o valor de aposta\n'
+                '/listar - Para listar todas as estratégias adicionadas'
             )
         )
 
@@ -88,5 +90,19 @@ def create_app() -> Client:
             await message.reply(
                 'Primeiro faça o login para adicionar uma estratégia'
             )
+
+    @app.on_message(filters.command('listar'))
+    def show_strategies(client: Client, message: Message) -> None:
+        text_format = '{:<5}{:<20}{:<7}{:<20}\n'
+        text = text_format.format('ID', 'Estratégia', 'Cor', 'Valor')
+        for strategy in get_strategies():
+            if strategy.user.name == message.chat.username:
+                text += text_format.format(
+                    strategy.id,
+                    strategy.strategy,
+                    strategy.bet_color,
+                    strategy.valuei
+                )
+        await message.reply(text)
 
     return app
