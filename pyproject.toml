@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "arbety_double_bot"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.9"
 selenium = "^4.10.0"
 webdriver-manager = "^3.8.6"
 pydantic = "^1.10.9"

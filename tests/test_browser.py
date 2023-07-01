@@ -15,7 +15,7 @@ from arbety_double_bot.driver import create_driver, find_element
 
 @pytest.fixture(scope='module')
 def driver() -> Firefox:
-    return create_driver(visible=True)
+    return create_driver(visible=False)
 
 
 def test_make_login(driver: Firefox) -> None:

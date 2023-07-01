@@ -1,10 +1,19 @@
-import pyromod
+import os
+import re
+
 from dotenv import load_dotenv
 from pyrogram import Client, filters
+from pyrogram.types import Message
+from pyromod import listen
 
 from arbety_double_bot.browser import is_logged, make_login
 from arbety_double_bot.driver import create_driver
-from arbety_double_bot.repositories import create_strategy, create_user
+from arbety_double_bot.repositories import (
+    create_strategy,
+    create_user,
+    edit_user,
+    get_user_by_name,
+)
 
 
 def create_app() -> Client:
@@ -27,45 +36,54 @@ def create_app() -> Client:
 
     @app.on_message(filters.command('login'))
     async def login(client: Client, message: Message) -> None:
-        email = await client.ask(message.chat.id, 'Digite seu email:')
-        password = await client.ask(message.chat.id, 'Digite sua senha:')
+        email = await message.chat.ask('Digite seu email:')
+        password = await message.chat.ask('Digite sua senha:')
+        login = await password.reply('Fazendo login...')
         driver = create_driver()
         make_login(driver, email.text, password.text)
         if is_logged(driver):
-            create_user(message.chat.username, email.text, password.text)
-            await client.send_message(message.chat.id, 'Login cadastrado')
+            user = get_user_by_name(message.chat.username)
+            if user:
+                edit_user(user.id, email.text, password.text)
+            else:
+                create_user(message.chat.username, email.text, password.text)
+            await login.edit_text('Login cadastrado')
         else:
-            await client.send_message(message.chat.id, 'Login inválido')
+            await login.edit_text('Login inválido')
         driver.quit()
 
     @app.on_message(filters.command('adicionar_estrategia'))
     async def add_strategy(client: Client, message: Message) -> None:
-        strategy = await client.ask(
-            message.chat.id,
-            (
-                'Digite sua estratégia utilizando r (red), g (green) e w '
-                '(white), exemplo: r - r - g = r\nNesse exemplo sempre que '
-                'der essa sequência ele vai apostar no vermelho'
-            ),
-        )
-        value = await client.ask(
-            'Digite o valor para a aposta, exemplo: 50 ou 50,00'
-        )
-        try:
-            strategy_regex = re.compile(r'[rwg]( - [rwg])+ = [rwg]')
-            if strategy_regex.findall(strategy.text):
-                await strategy.reply('Estratégia adicionada')
-                strategy_text, bet_color = strategy.text.split(' = ')
-                user_id = get_user_by_name(message.chat.username).id
-                create_strategy(
-                    user_id,
-                    strategy_text,
-                    bet_color,
-                    float(value.text.replace(',', '.')),
-                )
-            else:
-                await strategy.reply('Estratégia definida incorretamente')
-        except ValueError:
-            await value.reply('Digite apenas números para o valor da aposta')
+        if get_user_by_name(message.chat.username):
+            strategy = await message.chat.ask(
+                (
+                    'Digite sua estratégia utilizando r (red), g (green) e w '
+                    '(white), exemplo: r - r - g = r\nNesse exemplo sempre que '
+                    'der essa sequência ele vai apostar no vermelho'
+                ),
+            )
+            value = await message.chat.ask(
+                'Digite o valor para a aposta, exemplo: 50 ou 50,00'
+            )
+            try:
+                strategy_regex = re.compile(r'[rwg]( - [rwg])+ = [rwg]')
+                if strategy_regex.findall(strategy.text):
+                    await strategy.reply('Estratégia adicionada')
+                    strategy_text, bet_color = strategy.text.split(' = ')
+                    user_id = get_user_by_name(message.chat.username).id
+                    create_strategy(
+                        user_id,
+                        strategy_text,
+                        bet_color,
+                        float(value.text.replace(',', '.')),
+                    )
+                else:
+                    await strategy.reply('Estratégia definida incorretamente')
+            except ValueError:
+                await value.reply('Digite apenas números para o valor da aposta')
+        else:
+            await message.reply(
+                'Primeiro faça o login para adicionar uma estratégia'
+            )
 
     return app

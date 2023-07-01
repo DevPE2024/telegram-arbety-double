@@ -13,6 +13,15 @@ def create_user(name: str, email: str, password: str) -> None:
         session.commit()
 
 
+def edit_user(user_id: int, email: str, password: str) -> None:
+    with Session() as session:
+        model = session.get(UserModel, user_id)
+        if model is not None:
+            model.email = email
+            model.password = password
+            session.commit()
+
+
 def get_user_by_name(name: str) -> Union[User, None]:
     with Session() as session:
         query = select(UserModel).where(UserModel.name == name)

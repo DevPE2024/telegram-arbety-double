@@ -1,7 +1,6 @@
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import Firefox
 
-from arbety_double_bot.domain import Strategy
 from arbety_double_bot.driver import (
     click,
     go_to_url,
@@ -23,6 +22,9 @@ def get_signals(driver: Firefox) -> str:
 def to_bet(driver: Firefox, value: float, bet_color: str) -> None:
     go_to_url(driver, 'https://www.arbety.com/games/double')
     find_element(driver, '#betValue').send_keys(str(value))
+    bet_color = (
+        'red' if bet_color == 'r' else 'green' if bet_color == 'g' else 'white'
+    )
     click(driver, f'.ball-{bet_color}')
     click(driver, '.button-primary')
 
