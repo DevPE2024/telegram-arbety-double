@@ -92,7 +92,7 @@ def create_app() -> Client:
             )
 
     @app.on_message(filters.command('listar'))
-    def show_strategies(client: Client, message: Message) -> None:
+    async def show_strategies(client: Client, message: Message) -> None:
         text_format = '{:<5}{:<20}{:<7}{:<20}\n'
         text = text_format.format('ID', 'Estratégia', 'Cor', 'Valor')
         for strategy in get_strategies():
