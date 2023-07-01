@@ -63,6 +63,7 @@ def get_strategies() -> list[Strategy]:
             )
             result.append(
                 Strategy(
+                    id=model.id,
                     strategy=model.strategy,
                     bet_color=model.bet_color,
                     value=model.value,
