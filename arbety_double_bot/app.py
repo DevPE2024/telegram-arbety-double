@@ -1,8 +1,9 @@
+import pyromod
 from dotenv import load_dotenv
 from pyrogram import Client, filters
-import pyromod
 
 from arbety_double_bot.browser import create_driver, is_logged, make_login
+from arbety_double_bot.repositories import create_strategy, create_user
 
 
 def create_app() -> Client:
@@ -61,4 +62,5 @@ def create_app() -> Client:
                 await strategy.reply('Estratégia definida incorretamente')
         except ValueError:
             await value.reply('Digite apenas números para o valor da aposta')
+
     return app
