@@ -55,7 +55,7 @@ def create_app() -> Client:
             await login.edit_text('Login inválido')
         driver.quit()
 
-    @app.on_message(filters.command('adicionar_estrategia'))
+    @app.on_message(filters.command('adicionar'))
     async def add_strategy(client: Client, message: Message) -> None:
         if get_user_by_name(message.chat.username):
             strategy = await message.chat.ask(
