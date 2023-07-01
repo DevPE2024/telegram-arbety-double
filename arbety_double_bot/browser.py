@@ -3,9 +3,9 @@ from selenium.webdriver import Firefox
 
 from arbety_double_bot.driver import (
     click,
-    go_to_url,
     find_element,
     find_elements,
+    go_to_url,
 )
 
 

@@ -10,7 +10,7 @@ from arbety_double_bot.browser import (
     make_login,
     to_bet,
 )
-from arbety_double_bot.driver import create_driver, find_element
+from arbety_double_bot.driver import create_driver
 
 
 @pytest.fixture(scope='module')

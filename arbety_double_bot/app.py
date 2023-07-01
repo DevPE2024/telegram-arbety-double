@@ -30,7 +30,8 @@ def create_app() -> Client:
         await message.reply(
             (
                 '/login - Para cadastrar o login da plataforma arbety\n'
-                '/adicionar_estrategia - Para adicionar uma estratégia, junto com o valor de aposta'
+                '/adicionar_estrategia - Para adicionar uma estratégia, junto '
+                'com o valor de aposta'
             )
         )
 
@@ -80,7 +81,9 @@ def create_app() -> Client:
                 else:
                     await strategy.reply('Estratégia definida incorretamente')
             except ValueError:
-                await value.reply('Digite apenas números para o valor da aposta')
+                await value.reply(
+                    'Digite apenas números para o valor da aposta'
+                )
         else:
             await message.reply(
                 'Primeiro faça o login para adicionar uma estratégia'

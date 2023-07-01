@@ -59,7 +59,7 @@ def get_strategies() -> list[Strategy]:
                 id=model.user_id,
                 name=model.user.name,
                 email=model.user.email,
-                password=model.user.password
+                password=model.user.password,
             )
             result.append(
                 Strategy(strategy=model.strategy, value=model.value, user=user)

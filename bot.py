@@ -1,10 +1,11 @@
+import os
 import re
-from threading import active_count, Thread
+from threading import Thread, active_count
 
 from dotenv import load_dotenv
 from pyrogram.client import Client
 
-from arbety_double_bot.browser import get_signals,  to_bet
+from arbety_double_bot.browser import get_signals, to_bet
 from arbety_double_bot.constants import COLORS
 from arbety_double_bot.domain import Strategy
 from arbety_double_bot.driver import create_driver
