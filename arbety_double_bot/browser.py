@@ -12,11 +12,12 @@ from arbety_double_bot.driver import (
 
 def get_signals(driver: Firefox) -> str:
     go_to_url(driver, 'https://www.arbety.com/games/double')
-    result = []
-    for e in range(20):
-        signals = find_elements(driver, '.item')
-        result.append(signals[e].get_attribute('class').split()[-1][0])
-    return ' - '.join(result)
+    return ' - '.join(
+        [
+            s.get_attribute('class').split()[-1][0]
+            for s in find_elements(driver, '.item')
+        ]
+    )
 
 
 def to_bet(driver: Firefox, value: float, bet_color: str) -> None:
