@@ -101,7 +101,7 @@ def create_app() -> Client:
                     strategy.id,
                     strategy.strategy,
                     strategy.bet_color,
-                    strategy.valuei
+                    strategy.value,
                 )
         await message.reply(text)
 
