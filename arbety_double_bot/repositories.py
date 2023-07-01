@@ -62,6 +62,11 @@ def get_strategies() -> list[Strategy]:
                 password=model.user.password,
             )
             result.append(
-                Strategy(strategy=model.strategy, value=model.value, user=user)
+                Strategy(
+                    strategy=model.strategy,
+                    bet_color=model.bet_color,
+                    value=model.value,
+                    user=user,
+                )
             )
         return result
