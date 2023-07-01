@@ -28,6 +28,11 @@ def click(driver: Firefox, selector: str, element=None) -> None:
     )
 
 
+def go_to_url(driver: Firefox, url: str) -> None:
+    if not url == driver.current_url:
+        driver.get(url)
+
+
 def find_element(element, selector: str, wait: int = 30):
     return WebDriverWait(element, wait).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, selector))

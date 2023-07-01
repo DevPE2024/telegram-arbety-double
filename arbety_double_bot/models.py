@@ -13,6 +13,7 @@ class Base(DeclarativeBase):
 class UserModel(Base):
     __tablename__ = 'users'
     id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
     email: Mapped[str]
     password: Mapped[str]
     strategies: Mapped[List['StrategyModel']] = relationship(
@@ -24,6 +25,7 @@ class StrategyModel(Base):
     __tablename__ = 'strategies'
     id: Mapped[int] = mapped_column(primary_key=True)
     strategy: Mapped[str]
+    bet_color: Mapped[str]
     value: Mapped[float]
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     user: Mapped['UserModel'] = relationship(back_populates='strategies')

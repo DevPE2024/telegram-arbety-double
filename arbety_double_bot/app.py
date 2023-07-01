@@ -2,7 +2,8 @@ import pyromod
 from dotenv import load_dotenv
 from pyrogram import Client, filters
 
-from arbety_double_bot.browser import create_driver, is_logged, make_login
+from arbety_double_bot.browser import is_logged, make_login
+from arbety_double_bot.driver import create_driver
 from arbety_double_bot.repositories import create_strategy, create_user
 
 

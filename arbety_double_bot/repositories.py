@@ -1,5 +1,3 @@
-from typing import Union
-
 from sqlalchemy import select
 
 from arbety_double_bot.database import Session
@@ -13,15 +11,6 @@ def create_user(email: str, password: str) -> None:
         session.commit()
 
 
-def get_users() -> list[User]:
-    with Session() as session:
-        query = select(UserModel)
-        return [
-            User(id=u.id, email=u.email, password=u.password)
-            for u in session.scalars(query).all()
-        ]
-
-
 def create_strategy(user_id: int, strategy: str, value: float) -> None:
     with Session() as session:
         session.add(
@@ -30,10 +19,18 @@ def create_strategy(user_id: int, strategy: str, value: float) -> None:
         session.commit()
 
 
-def get_strategies_from_user(user_id: int) -> list[Strategy]:
+def get_strategies() -> list[Strategy]:
     with Session() as session:
-        query = select(StrategyModel).where(StrategyModel.user_id == user_id)
-        return [
-            Strategy(id=s.id, strategy=s.strategy, value=s.value)
-            for s in session.scalars(query).all()
-        ]
+        result = []
+        query = select(StrategyModel)
+        for model in session.scalars(query).all():
+            user = User(
+                id=model.user_id,
+                name=model.user.name,
+                email=model.user.email,
+                password=model.user.password
+            )
+            result.append(
+                Strategy(strategy=model.strategy, value=model.value, user=user)
+            )
+        return result
