@@ -1,4 +1,7 @@
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import (
+    StaleElementReferenceException,
+    TimeoutException,
+)
 from selenium.webdriver import Firefox
 
 from arbety_double_bot.driver import (
@@ -11,12 +14,15 @@ from arbety_double_bot.driver import (
 
 def get_signals(driver: Firefox) -> str:
     go_to_url(driver, 'https://www.arbety.com/games/double')
-    return ' - '.join(
-        [
-            s.get_attribute('class').split()[-1][0]
-            for s in find_elements(driver, '.item')
-        ]
-    )
+    try:
+        return ' - '.join(
+            [
+                s.get_attribute('class').split()[-1][0]
+                for s in find_elements(driver, '.item')
+            ]
+        )
+    except StaleElementReferenceException:
+        get_signals(driver)
 
 
 def to_bet(driver: Firefox, value: float, bet_color: str) -> None:
