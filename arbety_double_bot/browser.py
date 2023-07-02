@@ -22,7 +22,7 @@ def get_signals(driver: Firefox) -> str:
             ]
         )
     except StaleElementReferenceException:
-        get_signals(driver)
+        return get_signals(driver)
 
 
 def to_bet(driver: Firefox, value: float, bet_color: str) -> None:

@@ -16,6 +16,8 @@ tgcrypto = "^1.2.5"
 pyromod = "^2.0.0"
 sqlalchemy = "^2.0.17"
 python-dotenv = "^1.0.0"
+celery = {extras = ["redis"], version = "^5.3.1"}
+redis = "^4.6.0"
 
 
 [tool.poetry.group.dev.dependencies]

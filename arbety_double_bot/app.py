@@ -12,7 +12,7 @@ from arbety_double_bot.repositories import (
     create_strategy,
     create_user,
     edit_user,
-    get_strategies,
+    get_strategies_from_user,
     get_user_by_name,
 )
 
@@ -95,14 +95,14 @@ def create_app() -> Client:
     async def show_strategies(client: Client, message: Message) -> None:
         text_format = '{:<4}{:<18}{:<4}{}\n'
         text = 'ID Estratégia Cor Valor\n'
-        for strategy in get_strategies():
-            if strategy.user.name == message.chat.username:
-                text += text_format.format(
-                    strategy.id,
-                    strategy.strategy,
-                    strategy.bet_color,
-                    strategy.value,
-                )
+        user = get_user_by_name(message.chat.username)
+        for strategy in get_strategies_from_user(user):
+            text += text_format.format(
+                strategy.id,
+                strategy.strategy,
+                strategy.bet_color,
+                strategy.value,
+            )
         await message.reply(text)
 
     return app
