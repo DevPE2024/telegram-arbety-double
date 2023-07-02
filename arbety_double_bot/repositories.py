@@ -50,23 +50,17 @@ def create_strategy(
         session.commit()
 
 
-def get_strategies() -> list[Strategy]:
+def get_strategies_from_user(user: User) -> list[Strategy]:
     with Session() as session:
         result = []
-        query = select(StrategyModel)
-        for model in session.scalars(query).all():
-            user = User(
-                id=model.user_id,
-                name=model.user.name,
-                email=model.user.email,
-                password=model.user.password,
-            )
+        query = select(StrategyModel).where(StrategyModel.user_id == user.id)
+        for strategy in session.scalars(query).all():
             result.append(
                 Strategy(
-                    id=model.id,
-                    strategy=model.strategy,
-                    bet_color=model.bet_color,
-                    value=model.value,
+                    id=strategy.id,
+                    strategy=strategy.strategy,
+                    bet_color=strategy.bet_color,
+                    value=strategy.value,
                     user=user,
                 )
             )
