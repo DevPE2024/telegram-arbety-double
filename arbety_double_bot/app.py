@@ -51,8 +51,11 @@ def create_app() -> Client:
                 if user:
                     edit_user(user.id, email.text, password.text)
                 else:
-                    create_user(message.chat.username, email.text, password.text)
-                await login.edit_text('Login cadastrado')
+                    create_user(
+                        message.chat.username, email.text, password.text
+                    )
+                await login.edit_text('Login realizado')
+                os.system('systemctl restart arbety-double-bot')
             else:
                 await login.edit_text('Login inválido')
             await browser.close()
@@ -93,18 +96,37 @@ def create_app() -> Client:
                 'Primeiro faça o login para adicionar uma estratégia'
             )
 
+    @app.on_message(filters.command('remover'))
+    def remove_strategy(client: Client, message: Message) -> None:
+        if get_user_by_name(message.chat.username):
+            strategy_id = await message.chat.ask('Digite o ID da estrátegia:')
+            try:
+                remove_strategy(int(strategy_id.text))
+                await message.reply('Estratégia removida')
+            except ValueError:
+                await message.reply('ID inválido, digite apenas números')
+        else:
+            await message.reply(
+                'Primeiro faça o login para remover suas estratégias'
+            )
+
     @app.on_message(filters.command('listar'))
     async def show_strategies(client: Client, message: Message) -> None:
-        text_format = '{:<4}{:<18}{:<4}{}\n'
-        text = 'ID Estratégia Cor Valor\n'
-        user = get_user_by_name(message.chat.username)
-        for strategy in get_strategies_from_user(user):
-            text += text_format.format(
-                strategy.id,
-                strategy.strategy,
-                strategy.bet_color,
-                strategy.value,
+        if get_user_by_name(message.chat.username):
+            text_format = '{:<4}{:<18}{:<4}{}\n'
+            text = 'ID Estratégia Cor Valor\n'
+            user = get_user_by_name(message.chat.username)
+            for strategy in get_strategies_from_user(user):
+                text += text_format.format(
+                    strategy.id,
+                    strategy.strategy,
+                    strategy.bet_color,
+                    strategy.value,
+                )
+            await message.reply(text)
+        else:
+            await message.reply(
+                'Primeiro faça o login para mostrar suas estratégias'
             )
-        await message.reply(text)
 
     return app

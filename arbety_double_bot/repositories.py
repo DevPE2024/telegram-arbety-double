@@ -22,6 +22,15 @@ def edit_user(user_id: int, email: str, password: str) -> None:
             session.commit()
 
 
+def get_users() -> list[User]:
+    with Session() as session:
+        query = select(UserModel)
+        return [
+            User(id=m.id, name=m.name, email=m.email, password=m.password)
+            for m in session.scalars(query).all()
+        ]
+
+
 def get_user_by_name(name: str) -> Union[User, None]:
     with Session() as session:
         query = select(UserModel).where(UserModel.name == name)
