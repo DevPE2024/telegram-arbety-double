@@ -14,6 +14,7 @@ from arbety_double_bot.repositories import (
     edit_user,
     get_strategies_from_user,
     get_user_by_name,
+    remove_strategy_by_id,
 )
 
 
@@ -33,6 +34,7 @@ def create_app() -> Client:
                 '/login - Para cadastrar o login da plataforma arbety\n'
                 '/adicionar - Para adicionar uma estratégia, junto '
                 'com o valor de aposta\n'
+                '/remover - Para remover uma estratégia\n'
                 '/listar - Para listar todas as estratégias adicionadas'
             )
         )
@@ -55,7 +57,7 @@ def create_app() -> Client:
                         message.chat.username, email.text, password.text
                     )
                 await login.edit_text('Login realizado')
-                os.system('systemctl restart arbety-double-bot')
+                os.system('systemctl restart arbety-signals-room-bot.service')
             else:
                 await login.edit_text('Login inválido')
             await browser.close()
@@ -97,11 +99,11 @@ def create_app() -> Client:
             )
 
     @app.on_message(filters.command('remover'))
-    def remove_strategy(client: Client, message: Message) -> None:
+    async def remove_strategy(client: Client, message: Message) -> None:
         if get_user_by_name(message.chat.username):
             strategy_id = await message.chat.ask('Digite o ID da estrátegia:')
             try:
-                remove_strategy(int(strategy_id.text))
+                remove_strategy_by_id(int(strategy_id.text))
                 await message.reply('Estratégia removida')
             except ValueError:
                 await message.reply('ID inválido, digite apenas números')

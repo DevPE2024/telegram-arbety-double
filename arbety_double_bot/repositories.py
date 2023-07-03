@@ -59,12 +59,12 @@ def create_strategy(
         session.commit()
 
 
-def remove_strategy(strategy_id: int) -> None:
+def remove_strategy_by_id(strategy_id: int) -> None:
     with Session() as session:
         query = select(StrategyModel).where(StrategyModel.id == strategy_id)
         model = session.scalars(query).first()
         if model:
-            session.remove(model)
+            session.delete(model)
             session.commit()
 
 

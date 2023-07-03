@@ -16,8 +16,8 @@ async def to_bet(page, value: float, bet_color: str) -> None:
     bet_color = (
         'red' if bet_color == 'r' else 'green' if bet_color == 'g' else 'white'
     )
-    await page.locator(f'.ball-{bet_color}').first.click()
-    await page.locator('.button-primary').first.click()
+    await page.locator(f'.ball-{bet_color}').first.click(force=True)
+    await page.locator('.button-primary').first.click(force=True)
 
 
 async def make_login(page, email: str, password: str) -> None:
