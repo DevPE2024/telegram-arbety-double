@@ -2,12 +2,12 @@ import os
 import re
 
 from dotenv import load_dotenv
+from playwright.async_api import async_playwright
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from pyromod import listen
 
 from arbety_double_bot.browser import is_logged, make_login
-from arbety_double_bot.driver import create_driver
 from arbety_double_bot.repositories import (
     create_strategy,
     create_user,
@@ -42,18 +42,20 @@ def create_app() -> Client:
         email = await message.chat.ask('Digite seu email:')
         password = await message.chat.ask('Digite sua senha:')
         login = await password.reply('Fazendo login...')
-        driver = create_driver()
-        make_login(driver, email.text, password.text)
-        if is_logged(driver):
-            user = get_user_by_name(message.chat.username)
-            if user:
-                edit_user(user.id, email.text, password.text)
+        async with async_playwright() as p:
+            browser = await p.firefox.launch()
+            page = await browser.new_page()
+            await make_login(page, email.text, password.text)
+            if await is_logged(page):
+                user = get_user_by_name(message.chat.username)
+                if user:
+                    edit_user(user.id, email.text, password.text)
+                else:
+                    create_user(message.chat.username, email.text, password.text)
+                await login.edit_text('Login cadastrado')
             else:
-                create_user(message.chat.username, email.text, password.text)
-            await login.edit_text('Login cadastrado')
-        else:
-            await login.edit_text('Login inválido')
-        driver.quit()
+                await login.edit_text('Login inválido')
+            await browser.close()
 
     @app.on_message(filters.command('adicionar'))
     async def add_strategy(client: Client, message: Message) -> None:

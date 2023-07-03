@@ -1,12 +1,13 @@
+from asyncio import create_task, gather, run
 import re
 from threading import Thread
 
+from playwright.async_api import async_playwright
 from pyrogram.client import Client
 
 from arbety_double_bot.browser import get_signals, make_login, to_bet
 from arbety_double_bot.constants import COLORS
 from arbety_double_bot.domain import Strategy
-from arbety_double_bot.driver import create_driver
 
 
 class Subscriber:
@@ -15,23 +16,27 @@ class Subscriber:
         self._strategy = strategy
         self._wait = False
 
-    def notify(self, signals: str) -> None:
+    async def notify(self, signals: str) -> None:
         strategy_pattern = re.compile(f'{self._strategy.strategy}$')
         if strategy_pattern.findall(signals) and not self._wait:
-            self.send_bet_confirmation_message()
-            driver = create_driver()
-            print('Fazendo login')
-            make_login(
-                driver,
-                self._strategy.user.email,
-                self._strategy.user.password,
-            )
-            to_bet(driver, self._strategy.value, self._strategy.bet_color)
-            print('Apostado')
-            driver.quit()
+            await self.send_bet_confirmation_message()
+            async with async_playwright() as p:
+                browser = await p.firefox.launch()
+                page = await browser.new_page()
+                await make_login(
+                    page,
+                    self._strategy.user.email,
+                    self._strategy.user.password,
+                )
+                await to_bet(
+                    page,
+                    self._strategy.value,
+                    self._strategy.bet_color,
+                )
+                await browser.close()
             self._wait = True
         elif self._wait:
-            self.send_result_message(signals)
+            await self.send_result_message(signals)
             self._wait = False
 
     def send_bet_confirmation_message(self) -> None:
@@ -56,20 +61,23 @@ class Subscriber:
 class SignalsObserver:
     def __init__(self) -> None:
         self._subscribers = []
-        self._driver = create_driver()
-        self._signals = get_signals(self._driver)
 
     def add_subscriber(self, subscriber: Subscriber) -> None:
         self._subscribers.append(subscriber)
 
-    def run(self) -> None:
-        while True:
-            new_signals = get_signals(self._driver)
-            if self._signals != new_signals:
-                self._signals = new_signals
-                self.notify_subscribers()
+    async def run(self) -> None:
+        async with async_playwright() as p:
+            browser = await p.firefox.launch(headless=False)
+            page = await browser.new_page()
+            self._signals = get_signals(page)
+            while True:
+                new_signals = await get_signals(page)
+                if self._signals != new_signals:
+                    self._signals = new_signals
+                    await self.notify_subscribers()
 
-    def notify_subscribers(self) -> None:
-        print(self._signals)
+    async def notify_subscribers(self) -> None:
+        tasks = []
         for subscriber in self._subscribers:
-            Thread(target=subscriber.notify, args=[self._signals]).start()
+            tasks.append(create_task(subscriber.notify(self._signals)))
+        await gather(tasks)

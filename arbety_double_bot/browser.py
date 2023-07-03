@@ -1,50 +1,31 @@
-from selenium.common.exceptions import (
-    StaleElementReferenceException,
-    TimeoutException,
-)
-from selenium.webdriver import Firefox
-
-from arbety_double_bot.driver import (
-    click,
-    find_element,
-    find_elements,
-    go_to_url,
-)
+async def get_signals(page) -> str:
+    print(type(page))
+    await page.goto('https://www.arbety.com/games/double')
+    result = []
+    for item in await page.locator('.item').all():
+        result.append(item.get_attribute('class').split()[-1][0])
+    return ' - '.join(result)
 
 
-def get_signals(driver: Firefox) -> str:
-    go_to_url(driver, 'https://www.arbety.com/games/double')
-    try:
-        return ' - '.join(
-            [
-                s.get_attribute('class').split()[-1][0]
-                for s in find_elements(driver, '.item')
-            ]
-        )
-    except StaleElementReferenceException:
-        return get_signals(driver)
-
-
-def to_bet(driver: Firefox, value: float, bet_color: str) -> None:
-    go_to_url(driver, 'https://www.arbety.com/games/double')
-    find_element(driver, '#betValue').send_keys(str(value))
+async def to_bet(page, value: float, bet_color: str) -> None:
+    await page.goto('https://www.arbety.com/games/double')
+    await page.locator('#betValue').fill(str(value))
     bet_color = (
         'red' if bet_color == 'r' else 'green' if bet_color == 'g' else 'white'
     )
-    click(driver, f'.ball-{bet_color}')
-    click(driver, '.button-primary')
+    await page.locator(f'.ball-{bet_color}').click()
+    await page.locator('.button-primary').click()
 
 
-def make_login(driver: Firefox, email: str, password: str) -> None:
-    go_to_url(driver, 'https://www.arbety.com/home?modal=login')
-    find_element(driver, '#email').send_keys(email)
-    find_element(driver, '#current-password').send_keys(password)
-    click(driver, 'button.button-primary:not(.register)')
+async def make_login(page, email: str, password: str) -> None:
+    await page.goto('https://www.arbety.com/home?modal=login')
+    await page.locator('#email').fill(email)
+    await page.locator('#current-password').fill(password)
+    await page.locator('button.button-primary:not(.register)').click()
 
 
-def is_logged(driver: Firefox) -> bool:
-    try:
-        find_element(driver, '.user-name')
+async def is_logged(page) -> bool:
+    if await page.locator('.user-name'):
         return True
-    except TimeoutException:
+    else:
         return False
