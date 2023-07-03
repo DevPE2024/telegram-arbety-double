@@ -4,6 +4,7 @@
 # Project
 *.session
 *.session-journal
+*.json
 *.db
 
 ### Python ###

@@ -46,7 +46,8 @@ def create_app() -> Client:
         login = await password.reply('Fazendo login...')
         async with async_playwright() as p:
             browser = await p.firefox.launch()
-            page = await browser.new_page()
+            context = await browser.new_context()
+            page = await context.new_page()
             await make_login(page, email.text, password.text)
             if await is_logged(page):
                 user = get_user_by_name(message.chat.username)
@@ -57,6 +58,9 @@ def create_app() -> Client:
                         message.chat.username, email.text, password.text
                     )
                 await login.edit_text('Login realizado')
+                await context.storage_state(
+                    path=f'{message.chat.username}.json'
+                )
                 os.system('systemctl restart arbety-signals-room-bot.service')
             else:
                 await login.edit_text('Login inválido')

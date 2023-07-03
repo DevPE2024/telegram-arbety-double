@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from pyrogram.client import Client
 
-from arbety_double_bot.browser import get_signals, make_login, to_bet
+from arbety_double_bot.browser import get_signals, to_bet
 from arbety_double_bot.constants import COLORS
 from arbety_double_bot.domain import Strategy, User
 from arbety_double_bot.repositories import get_strategies_from_user, get_users
@@ -17,9 +17,8 @@ load_dotenv()
 async def create_browser(app: Client, user: User) -> callable:
     async with async_playwright() as p:
         browser = await p.firefox.launch()
-        context = await browser.new_context()
+        context = await browser.new_context(storage_state=f'{user.name}.json')
         page = await context.new_page()
-        await make_login(page, user.email, user.password)
         await page.goto('https://www.arbety.com/games/double')
         waits = [False for _ in get_strategies_from_user(user)]
         signals = await get_signals(page)
