@@ -3,6 +3,7 @@
 
 # Project
 *.session
+*.session-journal
 *.db
 
 ### Python ###

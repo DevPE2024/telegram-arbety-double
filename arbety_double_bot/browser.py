@@ -1,8 +1,8 @@
 async def get_signals(page) -> str:
-    print(type(page))
     await page.goto('https://www.arbety.com/games/double')
     result = []
     for item in await page.locator('.item').all():
+        print(await item.get_attribute('class'))
         result.append(item.get_attribute('class').split()[-1][0])
     return ' - '.join(result)
 
@@ -25,7 +25,4 @@ async def make_login(page, email: str, password: str) -> None:
 
 
 async def is_logged(page) -> bool:
-    if await page.locator('.user-name'):
-        return True
-    else:
-        return False
+    return await page.locator('.user-name').count()

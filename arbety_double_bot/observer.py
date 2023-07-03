@@ -1,6 +1,5 @@
-from asyncio import create_task, gather, run
+from asyncio import create_task, gather
 import re
-from threading import Thread
 
 from playwright.async_api import async_playwright
 from pyrogram.client import Client
@@ -17,6 +16,7 @@ class Subscriber:
         self._wait = False
 
     async def notify(self, signals: str) -> None:
+        print(signals)
         strategy_pattern = re.compile(f'{self._strategy.strategy}$')
         if strategy_pattern.findall(signals) and not self._wait:
             await self.send_bet_confirmation_message()
@@ -67,11 +67,13 @@ class SignalsObserver:
 
     async def run(self) -> None:
         async with async_playwright() as p:
-            browser = await p.firefox.launch(headless=False)
+            browser = await p.firefox.launch()
             page = await browser.new_page()
-            self._signals = get_signals(page)
+            self._signals = await get_signals(page)
             while True:
+                print(self._signals)
                 new_signals = await get_signals(page)
+                print(new_signals)
                 if self._signals != new_signals:
                     self._signals = new_signals
                     await self.notify_subscribers()
@@ -80,4 +82,4 @@ class SignalsObserver:
         tasks = []
         for subscriber in self._subscribers:
             tasks.append(create_task(subscriber.notify(self._signals)))
-        await gather(tasks)
+        await gather(*tasks)
