@@ -17,3 +17,10 @@ class Strategy(BaseModel):
     bet_color: str
     value: float
     user: Optional[User]
+
+
+class Bet(BaseModel):
+    id: Optional[int] = None
+    value: float
+    color: str
+    strategy: Optional[Strategy]
