@@ -19,6 +19,7 @@ class UserModel(Base):
     strategies: Mapped[List['StrategyModel']] = relationship(
         back_populates='user'
     )
+    gale: Mapped[int]
 
 
 class StrategyModel(Base):

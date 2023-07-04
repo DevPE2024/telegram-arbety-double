@@ -8,6 +8,7 @@ class User(BaseModel):
     name: str
     email: str
     password: str
+    gale: Optional[int] = 0
 
 
 class Strategy(BaseModel):
