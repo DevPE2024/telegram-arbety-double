@@ -38,6 +38,7 @@ class BetModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     color: Mapped[str]
     value: Mapped[float]
+    result: Mapped[str]
     strategy_id: Mapped[int] = mapped_column(ForeignKey('strategies.id'))
     strategy: Mapped['StrategyModel'] = relationship(back_populates='bets')
 

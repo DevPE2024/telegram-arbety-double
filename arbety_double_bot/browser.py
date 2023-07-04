@@ -1,4 +1,38 @@
+from asyncio import sleep
+from datetime import timedelta
+
 from playwright.async_api import TimeoutError
+
+
+async def create_browser(strategy: Strategy, signals: str) -> callable:
+    async with async_playwright() as p:
+        browser = await p.firefox.launch()
+        context = await browser.new_context(storage_state=f'{user.name}.json')
+        page = await context.new_page()
+        await page.goto('https://www.arbety.com/games/double')
+        show_result = False
+        while True:
+            while signals == await get_signals(page):
+                await sleep(1)
+            signals = get_signals(page)
+            strategy_pattern = re.compile(f'{strategy.strategy}$')
+            if strategy_pattern.findall(signals) and not show_result:
+                num_loss = 0
+                for bet in get_bets_from_strategy(strategy)[::-1]:
+                    if bet.result == 'loss':
+                        num_loss += 1
+                    else:
+                        break
+                if strategy.user.gale <= num_loss or num_loss == 0:
+                    value = strategy.value
+                else:
+                    value = strategy.value + strategy.value * num_loss
+                await to_bet(page, value, strategy.bet_color)
+                await send_bet_confirmation_message(strategy, value)
+                show_result = True
+            elif show_result:
+                await send_result_message(strategy, signals)
+                break
 
 
 async def get_signals(page) -> str:

@@ -8,7 +8,9 @@ class User(BaseModel):
     name: str
     email: str
     password: str
-    gale: Optional[int] = 0
+    gale: int
+    stop_loss: str
+    stop_win: str
 
 
 class Strategy(BaseModel):
@@ -16,11 +18,12 @@ class Strategy(BaseModel):
     strategy: str
     bet_color: str
     value: float
-    user: Optional[User]
+    user_id: Optional[int]
 
 
 class Bet(BaseModel):
     id: Optional[int] = None
     value: float
     color: str
-    strategy: Optional[Strategy]
+    result: str
+    strategy_id: Optional[int]

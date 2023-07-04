@@ -18,7 +18,7 @@ from arbety_double_bot.repositories import (
 )
 
 
-def create_app() -> Client:
+async def main() -> Client:
     load_dotenv()
     app = Client(
         os.environ['BOT_NAME'],
@@ -36,6 +36,8 @@ def create_app() -> Client:
         functions = {
             'login': login,
             'gale': configure_gale,
+            'stop_loss': configure_stop_loss,
+            'stop_win': configure_stop_win,
             'add': add_strategy,
             'remove': remove_strategy,
             'show': show_strategies,
@@ -49,10 +51,18 @@ def create_app() -> Client:
 
     async def show_main_menu(chat_id: int) -> None:
         menu = [
-            [InlineKeyboardButton('Login', callback_data='login')],
-            [InlineKeyboardButton('Configurar gale', callback_data='gale')],
-            [InlineKeyboardButton('Adicionar', callback_data='add')],
-            [InlineKeyboardButton('Remover', callback_data='remove')],
+            [
+                InlineKeyboardButton('Login', callback_data='login'),
+                InlineKeyboardButton('Gale', callback_data='gale')
+            ],
+            [
+                InlineKeyboardButton('Stop LOSS', callback_data='stop_loss'),
+                InlineKeyboardButton('Stop WIN', callback_data='stop_win')
+            ],
+            [
+                InlineKeyboardButton('Adicionar', callback_data='add'),
+                InlineKeyboardButton('Remover', callback_data='remove')
+            ],
             [InlineKeyboardButton('Listar', callback_data='show')],
         ]
         await app.send_message(
@@ -60,6 +70,15 @@ def create_app() -> Client:
             'Escolha uma opção',
             reply_markup=InlineKeyboardMarkup(menu),
         )
+
+    def login_required(function: callable) -> callable:
+        async def decorator(*args, **kwargs):
+            if get_user_by_name(args[1].chat.username):
+                await function(args, kwargs)
+            else:
+                await args[1].reply('Primeiro faça o login')
+
+        return decorator
 
     async def login(client: Client, message: Message) -> None:
         email = await message.chat.ask('Digite seu email:')
@@ -73,95 +92,136 @@ def create_app() -> Client:
             if await is_logged(page):
                 user = get_user_by_name(message.chat.username)
                 if user:
-                    edit_user(user.id, email.text, password.text)
+                    user.email = email.text
+                    user.password = password.text
+                    edit_user(user)
                 else:
-                    create_user(
-                        message.chat.username, email.text, password.text
+                    user = User(
+                        name=message.chat.username,
+                        email=email.text,
+                        password=password.text,
+                        gale=0,
+                        stop_loss=0,
+                        stop_win=0,
                     )
+                    create_user(user)
                 await login.edit_text('Login realizado')
                 await context.storage_state(
                     path=f'{message.chat.username}.json'
                 )
-                os.system('systemctl restart arbety-signals-room-bot.service')
             else:
                 await login.edit_text('Login inválido')
             await browser.close()
 
+    @login_required
     async def configure_gale(client: Client, message: Message) -> None:
         gale = await message.chat.ask(
-            'Digite a quantidade de gale que deseja para suas apostas:'
+            'Digite a quantidade de gale que deseja para suas apostas'
         )
         try:
             user = get_user_by_name(message.chat.username)
-            edit_user(user.id, user.email, user.password, user.gale)
+            user.gale = int(gale.text)
+            edit_user(user)
         except ValueError:
             await message.reply('Digite apenas números para configurar o gale')
 
-
-    async def add_strategy(client: Client, message: Message) -> None:
-        if get_user_by_name(message.chat.username):
-            strategy = await message.chat.ask(
-                (
-                    'Digite sua estratégia utilizando r (red), g (green) e w '
-                    '(white), exemplo: r - r - g = r\nNesse exemplo sempre que '
-                    'der essa sequência ele vai apostar no vermelho:'
-                ),
-            )
-            value = await message.chat.ask(
-                'Digite o valor para a aposta, exemplo: 50 ou 50,00:'
-            )
-            try:
-                strategy_regex = re.compile(r'[rwg]( - [rwg])+ = [rwg]')
-                if strategy_regex.findall(strategy.text):
-                    await strategy.reply('Estratégia adicionada')
-                    strategy_text, bet_color = strategy.text.split(' = ')
-                    user_id = get_user_by_name(message.chat.username).id
-                    create_strategy(
-                        user_id,
-                        strategy_text,
-                        bet_color,
-                        float(value.text.replace(',', '.')),
-                    )
-                else:
-                    await strategy.reply('Estratégia definida incorretamente')
-            except ValueError:
-                await value.reply(
-                    'Digite apenas números para o valor da aposta'
-                )
-        else:
-            await message.reply(
-                'Primeiro faça o login para adicionar uma estratégia'
-            )
-
-    async def remove_strategy(client: Client, message: Message) -> None:
-        if get_user_by_name(message.chat.username):
-            strategy_id = await message.chat.ask('Digite o ID da estrátegia:')
-            try:
-                remove_strategy_by_id(int(strategy_id.text))
-                await message.reply('Estratégia removida')
-            except ValueError:
-                await message.reply('ID inválido, digite apenas números')
-        else:
-            await message.reply(
-                'Primeiro faça o login para remover suas estratégias'
-            )
-
-    async def show_strategies(client: Client, message: Message) -> None:
-        if get_user_by_name(message.chat.username):
-            text_format = '{:<4}{:<18}{:<4}{}\n'
-            text = 'ID Estratégia Cor Valor\n'
+    @login_required
+    async def configure_stop_loss(client: Client, message: Message) -> None:
+        stop_loss = await message.chat.ask(
+            'Digite o valor para o Stop LOSS, exemplo: 50,00 ou 50'
+        )
+        try:
             user = get_user_by_name(message.chat.username)
-            for strategy in get_strategies_from_user(user):
-                text += text_format.format(
-                    strategy.id,
-                    strategy.strategy,
-                    strategy.bet_color,
-                    strategy.value,
-                )
-            await message.reply(text)
-        else:
+            user.stop_loss = float(stop_loss.replace(',', '.'))
+            edit_user(user)
+        except ValueError:
             await message.reply(
-                'Primeiro faça o login para mostrar suas estratégias'
+                'Digite apenas números para configurar o Stop LOSS'
             )
 
-    return app
+    @login_required
+    async def configure_stop_win(client: Client, message: Message) -> None:
+        stop_win = await message.chat.ask(
+            'Digite o valor para o Stop WIN, exemplo: 50,00 ou 50'
+        )
+        try:
+            user = get_user_by_name(message.chat.username)
+            user.stop_win = float(stop_win.replace(',', '.'))
+            edit_user(user)
+        except ValueError:
+            await message.reply(
+                'Digite apenas números para configurar o Stop WIN'
+            )
+
+    @login_required
+    async def add_strategy(client: Client, message: Message) -> None:
+        strategy = await message.chat.ask(
+            (
+                'Digite sua estratégia utilizando r (red), g (green) e w '
+                '(white), exemplo: r - r - g = r\nNesse exemplo sempre que '
+                'der essa sequência ele vai apostar no vermelho:'
+            ),
+        )
+        value = await message.chat.ask(
+            'Digite o valor para a aposta, exemplo: 50 ou 50,00:'
+        )
+        try:
+            strategy_regex = re.compile(r'[rwg]( - [rwg])+ = [rwg]')
+            if strategy_regex.findall(strategy.text):
+                await strategy.reply('Estratégia adicionada')
+                strategy_text, bet_color = strategy.text.split(' = ')
+                user_id = get_user_by_name(message.chat.username).id
+                strategy = Strategy(
+                    user_id=user_id,
+                    strategy=strategy_text,
+                    bet_color=bet_color,
+                    value=float(value.text.replace(',', '.')),
+                )
+                create_strategy(strategy)
+            else:
+                await strategy.reply('Estratégia definida incorretamente')
+        except ValueError:
+            await value.reply(
+                'Digite apenas números para o valor da aposta'
+            )
+
+    @login_required
+    async def remove_strategy(client: Client, message: Message) -> None:
+        strategy_id = await message.chat.ask('Digite o ID da estrátegia:')
+        try:
+            remove_strategy_by_id(int(strategy_id.text))
+            await message.reply('Estratégia removida')
+        except ValueError:
+            await message.reply('ID inválido, digite apenas números')
+
+    @login_required
+    async def show_strategies(client: Client, message: Message) -> None:
+        text_format = '{:<4}{:<18}{:<4}{}\n'
+        text = 'ID Estratégia Cor Valor\n'
+        user = get_user_by_name(message.chat.username)
+        for strategy in get_strategies_from_user(user):
+            text += text_format.format(
+                strategy.id,
+                strategy.strategy,
+                strategy.bet_color,
+                strategy.value,
+            )
+        await message.reply(text)
+
+    async def send_bet_confirmation_message(strategy: Strategy) -> None:
+        message = (
+            f'🔰 Entrada realizada 🔰\n💸 Valor: R$ {strategy.value}\n'
+            f'🎯 Cor: {COLORS[strategy.bet_color]}'
+        )
+        await app.send_message(strategy.user.name, message)
+
+    async def send_result_message(strategy: Strategy, signals: str) -> None:
+        result_regex = re.compile(
+            f'{strategy.strategy} - {strategy.bet_color}$'
+        )
+        color_message = f'➡️ Cor: {COLORS[signals[-1]]}'
+        if result_regex.findall(signals):
+            message = f'➡️ RESULTADO 💚 WIN 💚\n{color_message}'
+        else:
+            message = f'➡️ RESULTADO ❌ LOSS ❌\n{color_message}'
+        await app.send_message(strategy.user.name, message)
