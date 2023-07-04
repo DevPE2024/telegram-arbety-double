@@ -4,7 +4,7 @@ import re
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from pyrogram import Client, filters
-from pyrogram.types import Message
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from pyromod import listen
 
 from arbety_double_bot.browser import is_logged, make_login
@@ -29,17 +29,36 @@ def create_app() -> Client:
 
     @app.on_message(filters.command(['start', 'help']))
     async def start(client: Client, message: Message) -> None:
-        await message.reply(
-            (
-                '/login - Para cadastrar o login da plataforma arbety\n'
-                '/adicionar - Para adicionar uma estratégia, junto '
-                'com o valor de aposta\n'
-                '/remover - Para remover uma estratégia\n'
-                '/listar - Para listar todas as estratégias adicionadas'
+        await show_main_menu(message.chat.id)
+
+    @app.on_callback_query()
+    async def answer(client, callback_query):
+        functions = {
+            'login': login,
+            'add': add_strategy,
+            'remove': remove_strategy,
+            'show': show_strategies,
+        }
+        if functions.get(callback_query.data):
+            await functions[callback_query.data](
+                client,
+                callback_query.message,
             )
+        await show_main_menu(callback_query.message.chat.id)
+
+    async def show_main_menu(chat_id: int) -> None:
+        menu = [
+            [InlineKeyboardButton('Login', callback_data='login')],
+            [InlineKeyboardButton('Adicionar', callback_data='add')],
+            [InlineKeyboardButton('Remover', callback_data='remove')],
+            [InlineKeyboardButton('Listar', callback_data='show')],
+        ]
+        await app.send_message(
+            chat_id,
+            'Escolha uma opção',
+            reply_markup=InlineKeyboardMarkup(menu),
         )
 
-    @app.on_message(filters.command('login'))
     async def login(client: Client, message: Message) -> None:
         email = await message.chat.ask('Digite seu email:')
         password = await message.chat.ask('Digite sua senha:')
@@ -66,7 +85,6 @@ def create_app() -> Client:
                 await login.edit_text('Login inválido')
             await browser.close()
 
-    @app.on_message(filters.command('adicionar'))
     async def add_strategy(client: Client, message: Message) -> None:
         if get_user_by_name(message.chat.username):
             strategy = await message.chat.ask(
@@ -102,7 +120,6 @@ def create_app() -> Client:
                 'Primeiro faça o login para adicionar uma estratégia'
             )
 
-    @app.on_message(filters.command('remover'))
     async def remove_strategy(client: Client, message: Message) -> None:
         if get_user_by_name(message.chat.username):
             strategy_id = await message.chat.ask('Digite o ID da estrátegia:')
@@ -116,7 +133,6 @@ def create_app() -> Client:
                 'Primeiro faça o login para remover suas estratégias'
             )
 
-    @app.on_message(filters.command('listar'))
     async def show_strategies(client: Client, message: Message) -> None:
         if get_user_by_name(message.chat.username):
             text_format = '{:<4}{:<18}{:<4}{}\n'
