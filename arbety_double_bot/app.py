@@ -9,16 +9,19 @@ from pyromod import listen
 
 from arbety_double_bot.browser import is_logged, make_login
 from arbety_double_bot.repositories import (
+    create_bet,
     create_strategy,
     create_user,
     edit_user,
+    get_bets_from_strategy,
     get_strategies_from_user,
+    get_users,
     get_user_by_name,
     remove_strategy_by_id,
 )
 
 
-async def main() -> Client:
+async def main(users: list[User] = get_users()) -> Client:
     load_dotenv()
     app = Client(
         os.environ['BOT_NAME'],
@@ -109,6 +112,7 @@ async def main() -> Client:
                 await context.storage_state(
                     path=f'{message.chat.username}.json'
                 )
+                await main()
             else:
                 await login.edit_text('Login inválido')
             await browser.close()
@@ -208,20 +212,85 @@ async def main() -> Client:
             )
         await message.reply(text)
 
-    async def send_bet_confirmation_message(strategy: Strategy) -> None:
+    async def create_browser(strategy: Strategy, signals: str) -> callable:
+        async with async_playwright() as p:
+            browser = await p.firefox.launch()
+            context = await browser.new_context(storage_state=f'{user.name}.json')
+            page = await context.new_page()
+            await page.goto('https://www.arbety.com/games/double')
+            show_result = False
+            value = strategy.value
+            while True:
+                while signals == await get_signals(page):
+                    await sleep(1)
+                signals = get_signals(page)
+                strategy_pattern = re.compile(f'{strategy.strategy}$')
+                if strategy_pattern.findall(signals) and not show_result:
+                    num_loss = 0
+                    for bet in get_bets_from_strategy(strategy)[::-1]:
+                        if bet.result == 'loss':
+                            num_loss += 1
+                        else:
+                            break
+                    if strategy.user.gale > num_loss and num_loss > 0:
+                        value = strategy.value + strategy.value * num_loss
+                    await to_bet(page, value, strategy.bet_color)
+                    await send_bet_confirmation_message(strategy, value)
+                    show_result = True
+                elif show_result:
+                    await send_result_message(strategy, value, signals)
+                    break
+            await browser.close()
+
+    async def send_bet_confirmation_message(
+        strategy: Strategy, value: float
+    ) -> None:
         message = (
-            f'🔰 Entrada realizada 🔰\n💸 Valor: R$ {strategy.value}\n'
+            f'🔰 Entrada realizada 🔰\n💸 Valor: R$ {value}\n'
             f'🎯 Cor: {COLORS[strategy.bet_color]}'
         )
         await app.send_message(strategy.user.name, message)
 
-    async def send_result_message(strategy: Strategy, signals: str) -> None:
+    async def send_result_message(
+        strategy: Strategy, value: float, signals: str
+    ) -> None:
         result_regex = re.compile(
             f'{strategy.strategy} - {strategy.bet_color}$'
         )
         color_message = f'➡️ Cor: {COLORS[signals[-1]]}'
+        bet = Bet(
+            value=value,
+            color=strategy.bet_color,
+            result='win',
+            strategy_id=strategy.id,
+        )
         if result_regex.findall(signals):
             message = f'➡️ RESULTADO 💚 WIN 💚\n{color_message}'
         else:
+            bet.result = 'loss'
             message = f'➡️ RESULTADO ❌ LOSS ❌\n{color_message}'
+        create_bet(bet)
         await app.send_message(strategy.user.name, message)
+
+    if users:
+        async with async_playwright() as p:
+            browser = await p.firefox.launch()
+            context = await browser.new_context()
+            page = await context.new_page()
+            await page.goto('https://www.arbety.com/games/double')
+            signals = get_signals(page)
+            while True:
+                while signals == get_signals(page):
+                    await sleep(1)
+                signals = get_signals(page)
+                for user in users:
+                    for strategy in get_strategies_from_user(user):
+                        strategy_pattern = re.compile(r'.+( - [rwg] = [rwg])')
+                        strategy_text = strategy_pattern.sub(
+                            '',
+                            strategy.strategy,
+                        )
+                        if signals[-len(strategy_text):] == strategy_text:
+                            await create_browser(strategy, signals)
+    else:
+        await app.run()

@@ -1,6 +1,7 @@
-from arbety_double_bot.app import create_app
+from asyncio import run
 
- 
+from arbety_double_bot.app import main
+
+
 if __name__ == '__main__':
-    app = create_app()
-    app.run()
+    run(main())

@@ -104,9 +104,35 @@ def get_strategies_from_user(user: User) -> list[Strategy]:
 
 def strategy_model_to_dataclass(model: StrategyModel) -> Strategy:
     return Strategy(
-        id=strategy.id,
-        strategy=strategy.strategy,
-        bet_color=strategy.bet_color,
-        value=strategy.value,
-        user_id=user.id,
+        id=model.id,
+        strategy=model.strategy,
+        bet_color=model.bet_color,
+        value=model.value,
+        user_id=model.user_id,
+    )
+
+
+def create_bet(bet: Bet) -> None:
+    with Session() as session:
+        session.add(
+            BetModel(value=bet.value, colot=bet.color, result=bet.result),
+        )
+        session.commit()
+
+
+def get_bets_from_strategy(strategy: Strategy) -> list[Bet]:
+    with Session() as session:
+        query = select(BetModel).where(BetModel.strategy_id == strategy.id)
+        return [
+            bet_model_to_dataclass(m) for m in session.scalars(query).all()
+        ]
+
+
+def bet_model_to_dataclass(model: BetModel) -> Bet:
+    return Bet(
+        id=model.id,
+        value=model.value,
+        color=model.color,
+        result=model.result
+        strategy_id=model.strategy_id,
     )
