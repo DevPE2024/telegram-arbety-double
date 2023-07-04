@@ -35,6 +35,7 @@ def create_app() -> Client:
     async def answer(client, callback_query):
         functions = {
             'login': login,
+            'gale': configure_gale,
             'add': add_strategy,
             'remove': remove_strategy,
             'show': show_strategies,
@@ -49,6 +50,7 @@ def create_app() -> Client:
     async def show_main_menu(chat_id: int) -> None:
         menu = [
             [InlineKeyboardButton('Login', callback_data='login')],
+            [InlineKeyboardButton('Configurar gale', callback_data='gale')],
             [InlineKeyboardButton('Adicionar', callback_data='add')],
             [InlineKeyboardButton('Remover', callback_data='remove')],
             [InlineKeyboardButton('Listar', callback_data='show')],
@@ -85,17 +87,28 @@ def create_app() -> Client:
                 await login.edit_text('Login inválido')
             await browser.close()
 
+    async def configure_gale(client: Client, message: Message) -> None:
+        gale = await message.chat.ask(
+            'Digite a quantidade de gale que deseja para suas apostas:'
+        )
+        try:
+            user = get_user_by_name(message.chat.username)
+            edit_user(user.id, user.email, user.password, user.gale)
+        except ValueError:
+            await message.reply('Digite apenas números para configurar o gale')
+
+
     async def add_strategy(client: Client, message: Message) -> None:
         if get_user_by_name(message.chat.username):
             strategy = await message.chat.ask(
                 (
                     'Digite sua estratégia utilizando r (red), g (green) e w '
                     '(white), exemplo: r - r - g = r\nNesse exemplo sempre que '
-                    'der essa sequência ele vai apostar no vermelho'
+                    'der essa sequência ele vai apostar no vermelho:'
                 ),
             )
             value = await message.chat.ask(
-                'Digite o valor para a aposta, exemplo: 50 ou 50,00'
+                'Digite o valor para a aposta, exemplo: 50 ou 50,00:'
             )
             try:
                 strategy_regex = re.compile(r'[rwg]( - [rwg])+ = [rwg]')
