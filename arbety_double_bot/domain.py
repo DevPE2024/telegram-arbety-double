@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Optional
 
 from pydantic import BaseModel
@@ -24,6 +25,10 @@ class Strategy(BaseModel):
 class Bet(BaseModel):
     id: Optional[int] = None
     value: float
-    color: str
-    result: str
     strategy_id: Optional[int]
+
+
+class Token(BaseModel):
+    id: Optional[int] = None
+    value: str
+    expiration_date: date

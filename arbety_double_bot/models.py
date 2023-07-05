@@ -36,11 +36,16 @@ class StrategyModel(Base):
 class BetModel(Base):
     __tablename__ = 'bets'
     id: Mapped[int] = mapped_column(primary_key=True)
-    color: Mapped[str]
     value: Mapped[float]
-    result: Mapped[str]
     strategy_id: Mapped[int] = mapped_column(ForeignKey('strategies.id'))
     strategy: Mapped['StrategyModel'] = relationship(back_populates='bets')
+
+
+class TokenModel(Base):
+    __tablename__ = 'tokens'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    value: Mapped[str]
+    expiration_date: Mapped[date]
 
 
 Base.metadata.create_all(db)
