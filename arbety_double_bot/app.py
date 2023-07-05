@@ -37,6 +37,7 @@ async def main() -> Client:
         api_hash=os.environ['API_HASH'],
         bot_token=os.environ['BOT_TOKEN'],
     )
+    users = get_users()
 
     @app.on_message(filters.command(['start']))
     async def start(client: Client, message: Message) -> None:
@@ -47,6 +48,8 @@ async def main() -> Client:
         functions = {
             'login': login,
             'gale': configure_gale,
+            'stop_signals': stop_signals,
+            'continue_signals': continue_signals,
             'stop_loss': lambda m: configure_stop(m, 'loss'),
             'stop_win': lambda m: configure_stop(m, 'win'),
             'add': add_strategy,
@@ -62,6 +65,14 @@ async def main() -> Client:
             [
                 InlineKeyboardButton('Login', callback_data='login'),
                 InlineKeyboardButton('Gale', callback_data='gale'),
+            ],
+            [
+                InlineKeyboardButton(
+                    'Parar sinais', callback_data='stop_signals'
+                ),
+                InlineKeyboardButton(
+                    'Retomar sinais', callback_data='continue_signals'
+                ),
             ],
             [
                 InlineKeyboardButton('Stop LOSS', callback_data='stop_loss'),
@@ -124,7 +135,7 @@ async def main() -> Client:
                 await context.storage_state(
                     path=f'{message.chat.username}.json'
                 )
-                await run_signals()
+                await run_signals(users)
             else:
                 await login.edit_text('Login inválido')
             await browser.close()
@@ -138,6 +149,17 @@ async def main() -> Client:
         user = get_user_by_name(message.chat.username)
         user.gale = int(gale.text)
         edit_user(user)
+
+    @login_required
+    async def stop_signals(message: Message) -> None:
+        await message.reply('Parou com as apostas')
+        users.remove(get_user_by_name(message.chat.username))
+        await run_signals(users)
+
+    @login_required
+    async def continue_betting(message: Message) -> None:
+        await message.reply('Retomando apostas')
+        await run_signals([users, get_user_by_name(message.chat.username)])
 
     @number_validator
     @login_required
@@ -203,7 +225,7 @@ async def main() -> Client:
             )
         await message.reply(text)
 
-    def run_signals(users: list[User] = get_users()) -> None:
+    def run_signals(users: list[User]) -> None:
         async with async_playwright() as p:
             browser = await p.firefox.launch()
             context = await browser.new_context()
@@ -234,9 +256,8 @@ async def main() -> Client:
                 signals = await wait_for_new_signals(page, signals)
                 await send_result_message(strategy, value, signals)
                 if exceeded_stop_win_or_loss(strategy):
-                    await run_signals(
-                        [u for u in get_users() if u != strategy.user]
-                    )
+                    users.remove(strategy.user)
+                    await run_signals(users)
             await browser.close()
 
     async def wait_for_new_signals(page, signals: str) -> str:
@@ -291,8 +312,8 @@ async def main() -> Client:
     def get_profit(strategy: Strategy) -> float:
         return sum([b.value for b in get_bets_from_strategy(strategy)])
 
-    if get_users():
+    if users:
         async with app:
-            await run_signals()
+            await run_signals(users)
     else:
         await app.run()
