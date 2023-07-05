@@ -1,4 +1,5 @@
 from asyncio import sleep
+from datetime import date
 import os
 import re
 
@@ -41,11 +42,12 @@ async def main() -> Client:
 
     @app.on_message(filters.command(['start']))
     async def start(client: Client, message: Message) -> None:
-        await show_main_menu(message.chat.id)
+        await show_main_menu(message.chat.username)
 
     @app.on_callback_query()
     async def answer(client, callback_query):
         functions = {
+            'token': generate_token,
             'login': login,
             'gale': configure_gale,
             'stop_betting': stop_betting,
@@ -58,9 +60,9 @@ async def main() -> Client:
         }
         if functions.get(callback_query.data):
             await functions[callback_query.data](callback_query.message)
-        await show_main_menu(callback_query.message.chat.id)
+        await show_main_menu(callback_query.message.chat.username)
 
-    async def show_main_menu(chat_id: int) -> None:
+    async def show_main_menu(username: str) -> None:
         menu = [
             [
                 InlineKeyboardButton('Login', callback_data='login'),
@@ -84,28 +86,52 @@ async def main() -> Client:
             ],
             [InlineKeyboardButton('Listar', callback_data='show')],
         ]
+        if username == os.environ['USERNAME']:
+            menu.insert(
+                0,
+                [InlineKeyboardButton('Token', callback_data='token')]
+            )
         await app.send_message(
-            chat_id,
+            username,
             'Escolha uma opção',
             reply_markup=InlineKeyboardMarkup(menu),
         )
 
     def login_required(function: callable) -> callable:
         async def decorator(*args, **kwargs):
-            if get_user_by_name(args[1].chat.username):
+            if get_user_by_name(args[0].chat.username):
                 await function(*args, **kwargs)
             else:
-                await args[1].reply('Primeiro faça o login')
+                await args[0].reply('Primeiro faça o login')
 
         return decorator
+
+    def token_required(function: callable) -> callable:
+        async def decorator(*args, **kwargs):
+            token_message = await args[0].chat.ask('Digite o token')
+            token = get_token(token_message.text)
+            if token and token.expiration_date > date.today():
+                await function(args, kwargs)
+            else:
+                token_message.reply('Token inválido ou expirado')
 
     def number_validator(function: callable) -> callable:
         async def decorator(*args, **kwargs):
             try:
                 await function(*args, **kwargs)
             except ValueError:
-                await args[1].reply('Digite apenas números')
+                await args[0].reply('Digite apenas números')
 
+    @number_validator
+    async def generate_token(message: Message) -> None:
+        if message.chat.username == os.environ['USERNAME']:
+            days = await message.chat.ask(
+                'Digite a quantidade de dias de duração do Token'
+            )
+            token = create_token(int(days.text))
+            await days.reply(token)
+
+    @token_required
     async def login(message: Message) -> None:
         email = await message.chat.ask('Digite seu email:')
         password = await message.chat.ask('Digite sua senha:')
