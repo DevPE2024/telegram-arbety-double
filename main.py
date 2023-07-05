@@ -1,7 +1,8 @@
-from asyncio import sleep
 from datetime import date
+import asyncio
 import os
 import re
+import threading
 
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
@@ -42,9 +43,11 @@ app = Client(
 load_dotenv()
 users = get_users()
 
+
 @app.on_message(filters.command(['start']))
 async def start(client: Client, message: Message) -> None:
     await show_main_menu(message.chat.username)
+
 
 @app.on_callback_query()
 async def answer(client, callback_query):
@@ -63,6 +66,7 @@ async def answer(client, callback_query):
     if functions.get(callback_query.data):
         await functions[callback_query.data](callback_query.message)
     await show_main_menu(callback_query.message.chat.username)
+
 
 async def show_main_menu(username: str) -> None:
     menu = [
@@ -99,6 +103,7 @@ async def show_main_menu(username: str) -> None:
         reply_markup=InlineKeyboardMarkup(menu),
     )
 
+
 def login_required(function: callable) -> callable:
     async def decorator(*args, **kwargs):
         if get_user_by_name(args[0].chat.username):
@@ -107,6 +112,7 @@ def login_required(function: callable) -> callable:
             await args[0].reply('Primeiro faça o login')
 
     return decorator
+
 
 def token_required(function: callable) -> callable:
     async def decorator(*args, **kwargs):
@@ -119,6 +125,7 @@ def token_required(function: callable) -> callable:
 
     return decorator
 
+
 def number_validator(function: callable) -> callable:
     async def decorator(*args, **kwargs):
         try:
@@ -128,6 +135,7 @@ def number_validator(function: callable) -> callable:
 
     return decorator
 
+
 @number_validator
 async def generate_token(message: Message) -> None:
     if message.chat.username == os.environ['USERNAME']:
@@ -136,6 +144,7 @@ async def generate_token(message: Message) -> None:
         )
         token = create_token(int(days.text))
         await days.reply(token)
+
 
 @token_required
 async def login(message: Message) -> None:
@@ -167,10 +176,11 @@ async def login(message: Message) -> None:
             await context.storage_state(
                 path=f'{message.chat.username}.json'
             )
-            await run_signals(users)
+            threading.Thread(target=run_signals, args=(users)).start()
         else:
             await login.edit_text('Login inválido')
         await browser.close()
+
 
 @number_validator
 @login_required
@@ -182,16 +192,22 @@ async def configure_gale(message: Message) -> None:
     user.gale = int(gale.text)
     edit_user(user)
 
+
 @login_required
 async def stop_betting(message: Message) -> None:
     await message.reply('Parou com as apostas')
     users.remove(get_user_by_name(message.chat.username))
-    await run_signals(users)
+    threading.Thread(target=run_signals, args=(users)).start()
+
 
 @login_required
 async def continue_betting(message: Message) -> None:
     await message.reply('Retomando apostas')
-    await run_signals([users, get_user_by_name(message.chat.username)])
+    threading.Thread(
+        target=run_signals,
+        args=([users, get_user_by_name(message.chat.username)])
+    ).start()
+
 
 @number_validator
 @login_required
@@ -209,6 +225,7 @@ async def configure_stop(message: Message, for_result: str) -> None:
     else:
         user.stop_loss = -stop_value
     edit_user(user)
+
 
 @number_validator
 @login_required
@@ -236,12 +253,14 @@ async def add_strategy(message: Message) -> None:
     else:
         await strategy.reply('Estratégia definida incorretamente')
 
+
 @number_validator
 @login_required
 async def remove_strategy(message: Message) -> None:
     strategy_id = await message.chat.ask('Digite o ID da estrátegia:')
     remove_strategy_by_id(int(strategy_id.text))
     await message.reply('Estratégia removida')
+
 
 @login_required
 async def show_strategies(message: Message) -> None:
@@ -257,7 +276,8 @@ async def show_strategies(message: Message) -> None:
         )
     await message.reply(text)
 
-async def run_signals(users: list[User]) -> None:
+
+async def run_signals_callback(users: list[User]) -> None:
     async with async_playwright() as p:
         browser = await p.firefox.launch()
         context = await browser.new_context()
@@ -271,6 +291,15 @@ async def run_signals(users: list[User]) -> None:
                 strategy_text = strategy_pattern.sub('', strategy.strategy)
                 if signals[-len(strategy_text) :] == strategy_text:
                     await create_browser(strategy, signals)
+
+
+def run_signals(users: list[User]) -> None:
+    print(threading.enumerate())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(run_signals_callback(users))
+    loop.close()
+
 
 async def create_browser(strategy: Strategy, signals: str) -> callable:
     async with async_playwright() as p:
@@ -289,19 +318,22 @@ async def create_browser(strategy: Strategy, signals: str) -> callable:
             await send_result_message(strategy, value, signals)
             if exceeded_stop_win_or_loss(strategy):
                 users.remove(strategy.user)
-                await run_signals(users)
+                threading.Thread(target=run_signals, args=(users)).start()
         await browser.close()
+
 
 async def wait_for_new_signals(page, signals: str) -> str:
     while signals == await get_signals(page):
-        await sleep(1)
+        await asyncio.sleep(1)
     return await get_signals(page)
+
 
 def get_bet_value(strategy: Strategy) -> float:
     num_loss = get_number_of_loss(strategy)
     if strategy.user.gale > num_loss > 0:
         return strategy.value + strategy.value * num_loss
     return strategy.value
+
 
 def get_number_of_loss(strategy: Strategy) -> int:
     result = 0
@@ -312,6 +344,7 @@ def get_number_of_loss(strategy: Strategy) -> int:
             break
     return result
 
+
 async def send_bet_confirmation_message(
     strategy: Strategy, value: float
 ) -> None:
@@ -320,6 +353,7 @@ async def send_bet_confirmation_message(
         f'🎯 Cor: {COLORS[strategy.bet_color]}'
     )
     await app.send_message(strategy.user.name, message)
+
 
 async def send_result_message(
     strategy: Strategy, value: float, signals: str
@@ -337,13 +371,19 @@ async def send_result_message(
     create_bet(bet)
     await app.send_message(strategy.user.name, message)
 
+
 def exceeded_stop_win_or_loss(strategy: Strategy) -> bool:
     user = strategy.user
     return user.stop_loss < get_profit() or user.stop_win < get_profit()
+
 
 def get_profit(strategy: Strategy) -> float:
     return sum([b.value for b in get_bets_from_strategy(strategy)])
 
 
 if __name__ == '__main__':
-    app.run()
+    app.start()
+    if users:
+        threading.Thread(target=run_signals, args=(users)).start()
+    idle()
+    app.stop()
