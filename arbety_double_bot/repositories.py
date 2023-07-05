@@ -1,12 +1,17 @@
-from datetime import date
+from datetime import date, timedelta
 from typing import Union
 from uuid import uuid4
 
 from sqlalchemy import select
 
 from arbety_double_bot.database import Session
-from arbety_double_bot.domain import Bet, Strategy, User
-from arbety_double_bot.models import BetModel, StrategyModel, UserModel
+from arbety_double_bot.domain import Bet, Strategy, User, Token
+from arbety_double_bot.models import (
+    BetModel,
+    StrategyModel,
+    UserModel,
+    TokenModel,
+)
 
 
 def create_user(user: User) -> None:
