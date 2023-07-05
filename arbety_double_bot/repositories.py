@@ -3,8 +3,8 @@ from typing import Union
 from sqlalchemy import select
 
 from arbety_double_bot.database import Session
-from arbety_double_bot.domain import Strategy, User
-from arbety_double_bot.models import StrategyModel, UserModel
+from arbety_double_bot.domain import Bet, Strategy, User
+from arbety_double_bot.models import BetModel, StrategyModel, UserModel
 
 
 def create_user(user: User) -> None:
@@ -26,8 +26,8 @@ def edit_user(user: User) -> None:
     with Session() as session:
         model = session.get(UserModel, user.id)
         if model is not None:
-            model.email = email
-            model.password = password
+            model.email = user.email
+            model.password = user.password
             model.gale = user.gale
             model.stop_loss = user.stop_loss
             model.stop_win = user.stop_win
@@ -133,6 +133,6 @@ def bet_model_to_dataclass(model: BetModel) -> Bet:
         id=model.id,
         value=model.value,
         color=model.color,
-        result=model.result
+        result=model.result,
         strategy_id=model.strategy_id,
     )

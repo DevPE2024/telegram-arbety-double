@@ -1,9 +1,4 @@
-from asyncio import sleep
-from datetime import timedelta
-
 from playwright.async_api import TimeoutError
-
-
 
 
 async def get_signals(page) -> str:
