@@ -1,4 +1,6 @@
+from datetime import date
 from typing import Union
+from uuid import uuid4
 
 from sqlalchemy import select
 
@@ -93,13 +95,20 @@ def get_strategies() -> list[Strategy]:
         ]
 
 
-def get_strategies_from_user(user: User) -> list[Strategy]:
+def get_strategies_from_users(users: list[User]) -> list[Strategy]:
+    result = []
     with Session() as session:
-        query = select(StrategyModel).where(StrategyModel.user_id == user.id)
-        return [
-            strategy_model_to_dataclass(m)
-            for m in session.scalars(query).all()
-        ]
+        for user in users:
+            query = select(StrategyModel).where(
+                StrategyModel.user_id == user.id
+            )
+        result.append(
+            [
+                strategy_model_to_dataclass(m)
+                for m in session.scalars(query).all()
+            ]
+        )
+    return result
 
 
 def strategy_model_to_dataclass(model: StrategyModel) -> Strategy:
@@ -136,3 +145,25 @@ def bet_model_to_dataclass(model: BetModel) -> Bet:
         result=model.result,
         strategy_id=model.strategy_id,
     )
+
+
+def create_token(days: int) -> str:
+    with Session() as session:
+        token = TokenModel(
+            value=str(uuid4()),
+            expiration_date=date.today() + timedelta(days=days)
+        )
+        session.add(token)
+        session.commit()
+        return token.value
+
+
+def get_token(token: str) -> Union[Token, None]:
+    with Session() as session:
+        query = select(TokenModel).where(TokenModel.value == token)
+        model = session.scalars(query).first()
+        if model:
+            return Token(
+                value=model.value,
+                expiration_date=model.expiration_date,
+            )

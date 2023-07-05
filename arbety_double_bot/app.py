@@ -21,11 +21,13 @@ from arbety_double_bot.repositories import (
     create_bet,
     create_strategy,
     create_user,
+    create_token,
     edit_user,
     get_bets_from_strategy,
     get_strategies_from_users,
     get_user_by_name,
     get_users,
+    get_token,
     remove_strategy_by_id,
 )
 
@@ -251,7 +253,7 @@ async def main() -> Client:
             )
         await message.reply(text)
 
-    def run_signals(users: list[User]) -> None:
+    async def run_signals(users: list[User]) -> None:
         async with async_playwright() as p:
             browser = await p.firefox.launch()
             context = await browser.new_context()

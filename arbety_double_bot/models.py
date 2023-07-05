@@ -1,3 +1,4 @@
+from datetime import date
 from typing import List
 
 from sqlalchemy import ForeignKey
