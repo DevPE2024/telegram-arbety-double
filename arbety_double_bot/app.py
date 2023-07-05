@@ -153,7 +153,7 @@ async def main() -> Client:
         if for_result == 'win':
             user.stop_win = stop_value
         else:
-            user.stop_loss = stop_value
+            user.stop_loss = -stop_value
         edit_user(user)
 
     @number_validator
@@ -233,7 +233,7 @@ async def main() -> Client:
                 await send_bet_confirmation_message(strategy, value)
                 signals = await wait_for_new_signals(page, signals)
                 await send_result_message(strategy, value, signals)
-                if exceeded_stop_win_and_loss(strategy):
+                if exceeded_stop_win_or_loss(strategy):
                     await run_signals(
                         [u for u in get_users() if u != strategy.user]
                     )
@@ -246,14 +246,14 @@ async def main() -> Client:
 
     def get_bet_value(strategy: Strategy) -> float:
         num_loss = get_number_of_loss(strategy)
-        if strategy.user.gale > num_loss and num_loss > 0:
+        if strategy.user.gale > num_loss > 0:
             return strategy.value + strategy.value * num_loss
         return strategy.value
 
     def get_number_of_loss(strategy: Strategy) -> int:
         result = 0
         for bet in get_bets_from_strategy(strategy)[::-1]:
-            if bet.result == 'loss':
+            if bet.result < 0:
                 result += 1
             else:
                 break
@@ -275,40 +275,21 @@ async def main() -> Client:
             f'{strategy.strategy} - {strategy.bet_color}$'
         )
         color_message = f'➡️ Cor: {COLORS[signals[-1]]}'
-        bet = Bet(
-            value=value,
-            color=strategy.bet_color,
-            result='win',
-            strategy_id=strategy.id,
-        )
+        bet = Bet(value=value, strategy_id=strategy.id)
         if result_regex.findall(signals):
             message = f'➡️ RESULTADO 💚 WIN 💚\n{color_message}'
         else:
-            bet.result = 'loss'
+            bet.value = -value
             message = f'➡️ RESULTADO ❌ LOSS ❌\n{color_message}'
         create_bet(bet)
         await app.send_message(strategy.user.name, message)
 
-    def exceeded_stop_win_and_loss(strategy: Strategy) -> bool:
+    def exceeded_stop_win_or_loss(strategy: Strategy) -> bool:
         user = strategy.user
-        return (
-            get_total_bet_value_from_result(strategy, 'loss') >= user.stop_loss
-            or get_total_bet_value_from_result(
-                strategy,
-                'win',
-            ) >= user.stop_win
-        )
+        return user.stop_loss < get_profit() or user.stop_win < get_profit()
 
-    def get_total_bet_value_from_result(
-        strategy: Strategy, result: str
-    ) -> float:
-        return sum(
-            [
-                b.value
-                for b in get_bets_from_strategy(strategy)
-                if b.result == result
-            ]
-        )
+    def get_profit(strategy: Strategy) -> float:
+        return sum([b.value for b in get_bets_from_strategy(strategy)])
 
     if get_users():
         async with app:
