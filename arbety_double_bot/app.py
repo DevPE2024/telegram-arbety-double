@@ -48,8 +48,8 @@ async def main() -> Client:
         functions = {
             'login': login,
             'gale': configure_gale,
-            'stop_signals': stop_signals,
-            'continue_signals': continue_signals,
+            'stop_betting': stop_betting,
+            'continue_betting': continue_betting,
             'stop_loss': lambda m: configure_stop(m, 'loss'),
             'stop_win': lambda m: configure_stop(m, 'win'),
             'add': add_strategy,
@@ -68,10 +68,10 @@ async def main() -> Client:
             ],
             [
                 InlineKeyboardButton(
-                    'Parar sinais', callback_data='stop_signals'
+                    'Parar apostas', callback_data='stop_betting'
                 ),
                 InlineKeyboardButton(
-                    'Retomar sinais', callback_data='continue_signals'
+                    'Retomar apostas', callback_data='continue_betting'
                 ),
             ],
             [
@@ -151,7 +151,7 @@ async def main() -> Client:
         edit_user(user)
 
     @login_required
-    async def stop_signals(message: Message) -> None:
+    async def stop_betting(message: Message) -> None:
         await message.reply('Parou com as apostas')
         users.remove(get_user_by_name(message.chat.username))
         await run_signals(users)
