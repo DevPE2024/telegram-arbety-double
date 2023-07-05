@@ -21,6 +21,8 @@ class UserModel(Base):
         back_populates='user'
     )
     gale: Mapped[int]
+    stop_loss: Mapped[float]
+    stop_win: Mapped[float]
 
 
 class StrategyModel(Base):
