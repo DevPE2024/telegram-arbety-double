@@ -6,7 +6,7 @@ import threading
 
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
-from pyrogram import Client, filters, idle
+from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from pyromod import listen
 
@@ -24,8 +24,8 @@ from arbety_double_bot.repositories import (
     create_user,
     create_token,
     edit_user,
-    get_bets_from_strategy,
-    get_strategies_from_users,
+    get_bets_from_user,
+    get_strategies_from_user,
     get_user_by_name,
     get_users,
     get_token,
@@ -41,7 +41,6 @@ app = Client(
 )
 
 load_dotenv()
-users = get_users()
 
 
 @app.on_message(filters.command(['start']))
@@ -55,8 +54,8 @@ async def answer(client, callback_query):
         'token': generate_token,
         'login': login,
         'gale': configure_gale,
-        'stop_betting': stop_betting,
-        'continue_betting': continue_betting,
+        'stop_bot': stop_bot,
+        'start_bot': start_bot,
         'stop_loss': lambda m: configure_stop(m, 'loss'),
         'stop_win': lambda m: configure_stop(m, 'win'),
         'add': add_strategy,
@@ -71,28 +70,26 @@ async def answer(client, callback_query):
 async def show_main_menu(username: str) -> None:
     menu = [
         [
-            InlineKeyboardButton('Login', callback_data='login'),
-            InlineKeyboardButton('Gale', callback_data='gale'),
+            InlineKeyboardButton('⚙️ Login', callback_data='login'),
+            InlineKeyboardButton('🐔 Gale', callback_data='gale'),
         ],
         [
+            InlineKeyboardButton('🔴 Parar bot', callback_data='stop_bot'),
             InlineKeyboardButton(
-                'Parar apostas', callback_data='stop_betting'
-            ),
-            InlineKeyboardButton(
-                'Retomar apostas', callback_data='continue_betting'
+                '🟢 Iniciar bot', callback_data='start_bot'
             ),
         ],
         [
-            InlineKeyboardButton('Stop LOSS', callback_data='stop_loss'),
-            InlineKeyboardButton('Stop WIN', callback_data='stop_win'),
+            InlineKeyboardButton('❌ Stop LOSS', callback_data='stop_loss'),
+            InlineKeyboardButton('✅ Stop WIN', callback_data='stop_win'),
         ],
         [
-            InlineKeyboardButton('Adicionar', callback_data='add'),
-            InlineKeyboardButton('Remover', callback_data='remove'),
+            InlineKeyboardButton('👍🏻 Adicionar', callback_data='add'),
+            InlineKeyboardButton('👎🏻 Remover', callback_data='remove'),
         ],
         [InlineKeyboardButton('Listar', callback_data='show')],
     ]
-    if username == os.environ['USERNAME']:
+    if username in os.environ['ADMS']:
         menu.insert(
             0,
             [InlineKeyboardButton('Token', callback_data='token')]
@@ -138,7 +135,7 @@ def number_validator(function: callable) -> callable:
 
 @number_validator
 async def generate_token(message: Message) -> None:
-    if message.chat.username == os.environ['USERNAME']:
+    if message.chat.username in os.environ['ADMS']:
         days = await message.chat.ask(
             'Digite a quantidade de dias de duração do Token'
         )
@@ -170,13 +167,13 @@ async def login(message: Message) -> None:
                     gale=0,
                     stop_loss=0,
                     stop_win=0,
+                    is_betting=True,
                 )
                 create_user(user)
             await login.edit_text('Login realizado')
             await context.storage_state(
                 path=f'{message.chat.username}.json'
             )
-            threading.Thread(target=run_signals, args=(users)).start()
         else:
             await login.edit_text('Login inválido')
         await browser.close()
@@ -185,46 +182,72 @@ async def login(message: Message) -> None:
 @number_validator
 @login_required
 async def configure_gale(message: Message) -> None:
-    gale = await message.chat.ask(
-        'Digite a quantidade de gale que deseja para suas apostas'
-    )
     user = get_user_by_name(message.chat.username)
-    user.gale = int(gale.text)
+    edit_gale = await message.chat.ask(
+        f'Seu gale atual é de {user.gale}, deseja alterar o gale? (s ou n)'
+    )
+    if edit_gale.text[0].lower() == 's':
+        gale = await message.chat.ask(
+            'Digite a quantidade de gale que deseja para suas apostas'
+        )
+        user.gale = int(gale.text)
+        edit_user(user)
+        await gale.reply('Gale configurado')
+
+
+@login_required
+async def stop_bot(message: Message) -> None:
+    await message.reply('Parou o bot')
+    user = get_user_by_name(message.chat.username)
+    user.is_betting = False
     edit_user(user)
 
 
 @login_required
-async def stop_betting(message: Message) -> None:
-    await message.reply('Parou com as apostas')
-    users.remove(get_user_by_name(message.chat.username))
-    threading.Thread(target=run_signals, args=(users)).start()
-
-
-@login_required
-async def continue_betting(message: Message) -> None:
-    await message.reply('Retomando apostas')
-    threading.Thread(
-        target=run_signals,
-        args=([users, get_user_by_name(message.chat.username)])
-    ).start()
+async def start_bot(message: Message) -> None:
+    await message.reply('Bot iniciado')
+    user = get_user_by_name(message.chat.username)
+    user.is_betting = True
+    exists_thread = bool(
+        [t for t in threading.enumerate() if t.name == user.name]
+    )
+    if not exists_thread:
+        threading.Thread(
+            name=user.name,
+            target=run_signals,
+            args=[user],
+        ).start()
+    edit_user(user)
 
 
 @number_validator
 @login_required
 async def configure_stop(message: Message, for_result: str) -> None:
-    stop_value_message = await message.chat.ask(
-        (
-            f'Digite o valor para o Stop {for_result.upper()}, '
-            'exemplo: 50,00 ou 50'
-        )
-    )
     user = get_user_by_name(message.chat.username)
-    stop_value = float(stop_value_message.text.replace(',', '.'))
     if for_result == 'win':
-        user.stop_win = stop_value
+        edit_stop = await message.chat.ask(
+            f'Seu Stop WIN atual é {user.stop_win}, deseja alterar? (s ou n)'
+        )
     else:
-        user.stop_loss = -stop_value
-    edit_user(user)
+        edit_stop = await message.chat.ask(
+            f'Seu Stop LOSS atual é {user.stop_loss}, deseja alterar? (s ou n)'
+        )
+    if edit_stop.text[0].lower() == 's':
+        stop_value_message = await message.chat.ask(
+            (
+                f'Digite o valor para o Stop {for_result.upper()}, '
+                'exemplo: 50,00 ou 50'
+            )
+        )
+        stop_value = float(stop_value_message.text.replace(',', '.'))
+        if for_result == 'win':
+            user.stop_win = stop_value
+        else:
+            user.stop_loss = -stop_value
+        edit_user(user)
+        await stop_value_message.reply(
+            f'Stop {for_result.upper()} configurado'
+        )
 
 
 @number_validator
@@ -267,7 +290,7 @@ async def show_strategies(message: Message) -> None:
     text_format = '{:<4}{:<18}{:<4}{}\n'
     text = 'ID Estratégia Cor Valor\n'
     user = get_user_by_name(message.chat.username)
-    for strategy in get_strategies_from_users([user]):
+    for strategy in get_strategies_from_user(user):
         text += text_format.format(
             strategy.id,
             strategy.strategy,
@@ -277,48 +300,56 @@ async def show_strategies(message: Message) -> None:
     await message.reply(text)
 
 
-async def run_signals_callback(users: list[User]) -> None:
-    async with async_playwright() as p:
-        browser = await p.firefox.launch()
-        context = await browser.new_context()
-        page = await context.new_page()
-        await page.goto('https://www.arbety.com/games/double')
-        signals = get_signals(page)
-        while True:
-            signals = await wait_for_new_signals(page, signals)
-            for strategy in get_strategies_from_users(users):
-                strategy_pattern = re.compile(r'.+( - [rwg] = [rwg])')
-                strategy_text = strategy_pattern.sub('', strategy.strategy)
-                if signals[-len(strategy_text) :] == strategy_text:
-                    await create_browser(strategy, signals)
-
-
-def run_signals(users: list[User]) -> None:
-    print(threading.enumerate())
+def run_signals(user: User) -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(run_signals_callback(users))
+    loop.run_until_complete(run_signals_callback(user))
     loop.close()
 
 
-async def create_browser(strategy: Strategy, signals: str) -> callable:
+async def run_signals_callback(user: User) -> None:
+    await create_browser(user)
+
+
+async def create_browser(user: User) -> callable:
     async with async_playwright() as p:
         browser = await p.firefox.launch()
-        context = await browser.new_context(
-            storage_state=f'{strategy.user.name}.json'
-        )
+        context = await browser.new_context(storage_state=f'{user.name}.json')
         page = await context.new_page()
         await page.goto('https://www.arbety.com/games/double')
-        signals = await wait_for_new_signals(page, signals)
-        if re.compile(f'{strategy.strategy}$').findall(signals):
-            value = get_bet_value(strategy)
-            await to_bet(page, value, strategy.bet_color)
-            await send_bet_confirmation_message(strategy, value)
+        signals = await get_signals(page)
+        while True:
+            user = get_user_by_name(user.name)
+            if not user.is_betting:
+                break
             signals = await wait_for_new_signals(page, signals)
-            await send_result_message(strategy, value, signals)
-            if exceeded_stop_win_or_loss(strategy):
-                users.remove(strategy.user)
-                threading.Thread(target=run_signals, args=(users)).start()
+            for strategy in get_strategies_from_user(user):
+                if re.compile(f'{strategy.strategy}$').findall(signals):
+                    value = get_bet_value(strategy)
+                    await to_bet(page, value, strategy.bet_color)
+                    await send_bet_confirmation_message(strategy, value)
+                    signals = await wait_for_new_signals(page, signals)
+                    await send_result_message(strategy, value, signals)
+                    exceeded_stop_loss = (
+                        0 != user.stop_loss >= get_profit(user)
+                    )
+                    exceeded_stop_win = 0 != user.stop_win <= get_profit(user)
+                    if exceeded_stop_loss or exceeded_stop_win:
+                        user.is_betting = False
+                        if exceeded_stop_loss:
+                            await app.send_message(
+                                user.name,
+                                'Bot parou, Stop LOSS atingido',
+                            )
+                            user.stop_loss *= 2
+                        elif exceeded_stop_win:
+                            await app.send_message(
+                                strategy.user.name,
+                                'Bot parou, Stop WIN atingido',
+                            )
+                            user.stop_win *= 2
+                        edit_user(user)
+                        break
         await browser.close()
 
 
@@ -329,16 +360,17 @@ async def wait_for_new_signals(page, signals: str) -> str:
 
 
 def get_bet_value(strategy: Strategy) -> float:
-    num_loss = get_number_of_loss(strategy)
-    if strategy.user.gale > num_loss > 0:
-        return strategy.value + strategy.value * num_loss
+    bets = get_bets_from_user(strategy.user)
+    num_loss = get_number_of_loss(bets)
+    if bets and bets[-1].value < 0 and num_loss < strategy.user.gale:
+        return abs(bets[-1].value * 2)
     return strategy.value
 
 
-def get_number_of_loss(strategy: Strategy) -> int:
+def get_number_of_loss(bets: list[Bet]) -> int:
     result = 0
-    for bet in get_bets_from_strategy(strategy)[::-1]:
-        if bet.result < 0:
+    for bet in bets[::-1]:
+        if bet.value < 0:
             result += 1
         else:
             break
@@ -362,28 +394,20 @@ async def send_result_message(
         f'{strategy.strategy} - {strategy.bet_color}$'
     )
     color_message = f'➡️ Cor: {COLORS[signals[-1]]}'
-    bet = Bet(value=value, strategy_id=strategy.id)
+    bet = Bet(value=value, user_id=strategy.user.id)
     if result_regex.findall(signals):
         message = f'➡️ RESULTADO 💚 WIN 💚\n{color_message}'
     else:
         bet.value = -value
         message = f'➡️ RESULTADO ❌ LOSS ❌\n{color_message}'
     create_bet(bet)
+    message += f'\n💸 Lucro: R$ {get_profit(strategy.user)}'
     await app.send_message(strategy.user.name, message)
 
 
-def exceeded_stop_win_or_loss(strategy: Strategy) -> bool:
-    user = strategy.user
-    return user.stop_loss < get_profit() or user.stop_win < get_profit()
-
-
-def get_profit(strategy: Strategy) -> float:
-    return sum([b.value for b in get_bets_from_strategy(strategy)])
+def get_profit(user: User) -> float:
+    return sum([b.value for b in get_bets_from_user(user)])
 
 
 if __name__ == '__main__':
-    app.start()
-    if users:
-        threading.Thread(target=run_signals, args=(users)).start()
-    idle()
-    app.stop()
+    app.run()

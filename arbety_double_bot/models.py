@@ -20,9 +20,11 @@ class UserModel(Base):
     strategies: Mapped[List['StrategyModel']] = relationship(
         back_populates='user'
     )
+    bets: Mapped[List['BetModel']] = relationship(back_populates='user')
     gale: Mapped[int]
     stop_loss: Mapped[float]
     stop_win: Mapped[float]
+    is_betting: Mapped[bool]
 
 
 class StrategyModel(Base):
@@ -31,7 +33,6 @@ class StrategyModel(Base):
     strategy: Mapped[str]
     bet_color: Mapped[str]
     value: Mapped[float]
-    bets: Mapped[List['BetModel']] = relationship(back_populates='strategy')
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     user: Mapped['UserModel'] = relationship(back_populates='strategies')
 
@@ -40,8 +41,8 @@ class BetModel(Base):
     __tablename__ = 'bets'
     id: Mapped[int] = mapped_column(primary_key=True)
     value: Mapped[float]
-    strategy_id: Mapped[int] = mapped_column(ForeignKey('strategies.id'))
-    strategy: Mapped['StrategyModel'] = relationship(back_populates='bets')
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    user: Mapped['UserModel'] = relationship(back_populates='bets')
 
 
 class TokenModel(Base):

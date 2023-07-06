@@ -10,8 +10,9 @@ class User(BaseModel):
     email: str
     password: str
     gale: int
-    stop_loss: str
-    stop_win: str
+    stop_loss: float
+    stop_win: float
+    is_betting: bool
 
 
 class Strategy(BaseModel):
@@ -19,13 +20,15 @@ class Strategy(BaseModel):
     strategy: str
     bet_color: str
     value: float
+    user: Optional[User]
     user_id: Optional[int]
 
 
 class Bet(BaseModel):
     id: Optional[int] = None
     value: float
-    strategy_id: Optional[int]
+    user: Optional[User]
+    user_id: Optional[int]
 
 
 class Token(BaseModel):
