@@ -13,6 +13,7 @@ class User(BaseModel):
     stop_loss: float
     stop_win: float
     is_betting: bool
+    token: str
 
 
 class Strategy(BaseModel):

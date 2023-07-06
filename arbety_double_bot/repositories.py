@@ -25,6 +25,7 @@ def create_user(user: User) -> None:
                 stop_loss=user.stop_loss,
                 stop_win=user.stop_win,
                 is_betting=user.is_betting,
+                token=user.token,
             ),
         )
         session.commit()
@@ -40,6 +41,7 @@ def edit_user(user: User) -> None:
             model.stop_loss = user.stop_loss
             model.stop_win = user.stop_win
             model.is_betting = user.is_betting
+            model.token = user.token
             session.commit()
 
 
@@ -69,6 +71,7 @@ def user_model_to_dataclass(model: UserModel) -> User:
         stop_loss=model.stop_loss,
         stop_win=model.stop_win,
         is_betting=model.is_betting,
+        token=model.token,
     )
 
 

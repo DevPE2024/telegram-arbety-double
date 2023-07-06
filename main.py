@@ -1,6 +1,7 @@
 from datetime import date
 import asyncio
 import os
+import prettytable as pt
 import re
 import threading
 
@@ -115,8 +116,14 @@ def token_required(function: callable) -> callable:
     async def decorator(*args, **kwargs):
         token_message = await args[0].chat.ask('Digite o token')
         token = get_token(token_message.text)
-        if token and token.expiration_date > date.today():
-            await function(*args, **kwargs)
+        users_with_token = [u for u in get_users() if u.token == token.value]
+        if (
+            users_with_token
+            and users_with_token[0].name != args[0].chat.username
+        ):
+            await token_message.reply('Token já está em uso')
+        elif token and token.expiration_date > date.today():
+            await function(*args, token=token.value)
         else:
             await token_message.reply('Token inválido ou expirado')
 
@@ -144,7 +151,7 @@ async def generate_token(message: Message) -> None:
 
 
 @token_required
-async def login(message: Message) -> None:
+async def login(message: Message, token: str = '') -> None:
     email = await message.chat.ask('Digite seu email:')
     password = await message.chat.ask('Digite sua senha:')
     login = await password.reply('Fazendo login...')
@@ -168,6 +175,7 @@ async def login(message: Message) -> None:
                     stop_loss=0,
                     stop_win=0,
                     is_betting=True,
+                    token=token,
                 )
                 create_user(user)
             await login.edit_text('Login realizado')
@@ -281,23 +289,33 @@ async def add_strategy(message: Message) -> None:
 @login_required
 async def remove_strategy(message: Message) -> None:
     strategy_id = await message.chat.ask('Digite o ID da estrátegia:')
-    remove_strategy_by_id(int(strategy_id.text))
-    await message.reply('Estratégia removida')
+    user = get_user_by_name(message.chat.username)
+    if [
+        s for s in get_strategies_from_user(user)
+        if s.id == int(strategy_id.text)
+    ]:
+        remove_strategy_by_id(int(strategy_id.text))
+        await message.reply('Estratégia removida')
+    else:
+        await message.reply('ID inválido')
 
 
 @login_required
 async def show_strategies(message: Message) -> None:
-    text_format = '{:<4}{:<18}{:<4}{}\n'
-    text = 'ID Estratégia Cor Valor\n'
+    table = pt.PrettyTable(['ID', 'Estratégia', 'Valor'])
+    table.align['ID'] = 'l'
+    table.align['Estratégia'] = 'c'
+    table.align['Valor'] = 'l'
     user = get_user_by_name(message.chat.username)
     for strategy in get_strategies_from_user(user):
-        text += text_format.format(
-            strategy.id,
-            strategy.strategy,
-            strategy.bet_color,
-            strategy.value,
+        table.add_row(
+            [
+                strategy.id,
+                f'{strategy.strategy} = {strategy.bet_color}',
+                f'R$ {strategy.value:.2f}'.replace('.', ','),
+            ]
         )
-    await message.reply(text)
+    await message.reply(f'```\n{table}```')
 
 
 def run_signals(user: User) -> None:
@@ -381,9 +399,9 @@ async def send_bet_confirmation_message(
     strategy: Strategy, value: float
 ) -> None:
     message = (
-        f'🔰 Entrada realizada 🔰\n💸 Valor: R$ {value}\n'
+        f'🔰 Entrada realizada 🔰\n💸 Valor: R$ {value:.2f}\n'
         f'🎯 Cor: {COLORS[strategy.bet_color]}'
-    )
+    ).replace('.', ',')
     await app.send_message(strategy.user.name, message)
 
 
@@ -401,7 +419,9 @@ async def send_result_message(
         bet.value = -value
         message = f'➡️ RESULTADO ❌ LOSS ❌\n{color_message}'
     create_bet(bet)
-    message += f'\n💸 Lucro: R$ {get_profit(strategy.user)}'
+    message += (
+        f'\n💸 Lucro: R$ {get_profit(strategy.user):.2f}'.replace('.', ',')
+    )
     await app.send_message(strategy.user.name, message)
 
 

@@ -25,6 +25,7 @@ class UserModel(Base):
     stop_loss: Mapped[float]
     stop_win: Mapped[float]
     is_betting: Mapped[bool]
+    token: Mapped[str]
 
 
 class StrategyModel(Base):
