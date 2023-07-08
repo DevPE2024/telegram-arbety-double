@@ -1,5 +1,6 @@
 from datetime import date
 import asyncio
+import json
 import os
 import prettytable as pt
 import re
@@ -90,7 +91,7 @@ async def show_main_menu(user_id: int) -> None:
         ],
         [InlineKeyboardButton('Listar', callback_data='show')],
     ]
-    if user_id in os.environ['ADMS']:
+    if user_id in json.load(open('.config.json', 'r'))['admins']:
         menu.insert(
             0,
             [InlineKeyboardButton('Token', callback_data='token')]
