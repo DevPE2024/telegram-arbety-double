@@ -28,6 +28,7 @@ class Strategy(BaseModel):
 class Bet(BaseModel):
     id: Optional[int] = None
     value: float
+    create_at: Optional[date] = date.today()
     user: Optional[User]
     user_id: Optional[int]
 

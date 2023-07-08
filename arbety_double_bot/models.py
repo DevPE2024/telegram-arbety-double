@@ -42,6 +42,7 @@ class BetModel(Base):
     __tablename__ = 'bets'
     id: Mapped[int] = mapped_column(primary_key=True)
     value: Mapped[float]
+    create_at: Mapped[date] = mapped_column(default=date.today())
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     user: Mapped['UserModel'] = relationship(back_populates='bets')
 

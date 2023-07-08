@@ -380,7 +380,7 @@ async def wait_for_new_signals(page, signals: str) -> str:
 def get_bet_value(strategy: Strategy) -> float:
     bets = get_bets_from_user(strategy.user)
     num_loss = get_number_of_loss(bets)
-    if bets and bets[-1].value < 0 and num_loss < strategy.user.gale:
+    if bets and bets[-1].value < 0 and num_loss <= strategy.user.gale:
         return abs(bets[-1].value * 2)
     return strategy.value
 

@@ -127,13 +127,21 @@ def strategy_model_to_dataclass(model: StrategyModel) -> Strategy:
 
 def create_bet(bet: Bet) -> None:
     with Session() as session:
-        session.add(BetModel(value=bet.value, user_id=bet.user_id))
+        session.add(
+            BetModel(
+                value=bet.value,
+                create_at=bet.create_at,
+                user_id=bet.user_id,
+            ),
+        )
         session.commit()
 
 
 def get_bets_from_user(user: User) -> list[Bet]:
     with Session() as session:
-        query = select(BetModel).where(BetModel.user_id == user.id)
+        query = select(BetModel).where(
+            BetModel.user_id == user.id and BetModel.create_at == date.today()
+        )
         return [
             bet_model_to_dataclass(m) for m in session.scalars(query).all()
         ]
@@ -143,6 +151,7 @@ def bet_model_to_dataclass(model: BetModel) -> Bet:
     return Bet(
         id=model.id,
         value=model.value,
+        create_at=model.create_at,
         user=user_model_to_dataclass(model.user),
     )
 
