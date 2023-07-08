@@ -97,7 +97,7 @@ async def show_main_menu(user_id: int) -> None:
             [InlineKeyboardButton('Token', callback_data='token')]
         )
     await app.send_message(
-        username,
+        user_id,
         'Escolha uma opção',
         reply_markup=InlineKeyboardMarkup(menu),
     )
@@ -357,13 +357,13 @@ async def create_browser(user: User) -> callable:
                         user.is_betting = False
                         if exceeded_stop_loss:
                             await app.send_message(
-                                user.name,
+                                user.id,
                                 'Bot parou, Stop LOSS atingido',
                             )
                             user.stop_loss *= 2
                         elif exceeded_stop_win:
                             await app.send_message(
-                                strategy.user.name,
+                                strategy.user.id,
                                 'Bot parou, Stop WIN atingido',
                             )
                             user.stop_win *= 2
@@ -403,7 +403,7 @@ async def send_bet_confirmation_message(
         f'🔰 Entrada realizada 🔰\n💸 Valor: R$ {value:.2f}\n'
         f'🎯 Cor: {COLORS[strategy.bet_color]}'
     ).replace('.', ',')
-    await app.send_message(strategy.user.name, message)
+    await app.send_message(strategy.user.id, message)
 
 
 async def send_result_message(
@@ -423,7 +423,7 @@ async def send_result_message(
     message += (
         f'\n💸 Lucro: R$ {get_profit(strategy.user):.2f}'.replace('.', ',')
     )
-    await app.send_message(strategy.user.name, message)
+    await app.send_message(strategy.user.id, message)
 
 
 def get_profit(user: User) -> float:
