@@ -47,7 +47,7 @@ load_dotenv()
 
 @app.on_message(filters.command(['start']))
 async def start(client: Client, message: Message) -> None:
-    await show_main_menu(message.from_user.id)
+    await show_main_menu(message.chat.id)
 
 
 @app.on_callback_query()
@@ -66,14 +66,13 @@ async def answer(client, callback_query):
     }
     if functions.get(callback_query.data):
         await functions[callback_query.data](callback_query.message)
-    await show_main_menu(callback_query.message.chat.username)
+    await show_main_menu(callback_query.message.chat.id)
 
 
 async def show_main_menu(user_id: int) -> None:
     menu = [
         [
             InlineKeyboardButton('⚙️ Login', callback_data='login'),
-            InlineKeyboardButton('🐔 Gale', callback_data='gale'),
         ],
         [
             InlineKeyboardButton('🔴 Parar bot', callback_data='stop_bot'),
@@ -105,7 +104,7 @@ async def show_main_menu(user_id: int) -> None:
 
 def login_required(function: callable) -> callable:
     async def decorator(*args, **kwargs):
-        if get_user(args[0].from_user.id):
+        if get_user(args[0].chat.id):
             await function(*args, **kwargs)
         else:
             await args[0].reply('Primeiro faça o login')
@@ -143,12 +142,11 @@ def number_validator(function: callable) -> callable:
 
 @number_validator
 async def generate_token(message: Message) -> None:
-    if message.chat.username in os.environ['ADMS']:
-        days = await message.chat.ask(
-            'Digite a quantidade de dias de duração do Token'
-        )
-        token = create_token(int(days.text))
-        await days.reply(token)
+    days = await message.chat.ask(
+        'Digite a quantidade de dias de duração do Token'
+    )
+    token = create_token(int(days.text))
+    await days.reply(token)
 
 
 @token_required
@@ -162,14 +160,14 @@ async def login(message: Message, token: str = '') -> None:
         page = await context.new_page()
         await make_login(page, email.text, password.text)
         if await is_logged(page):
-            user = get_user(message.from_user.id)
+            user = get_user(message.chat.id)
             if user:
                 user.email = email.text
                 user.password = password.text
                 edit_user(user)
             else:
                 user = User(
-                    name=message.chat.username,
+                    id=message.chat.id,
                     email=email.text,
                     password=password.text,
                     gale=0,
@@ -180,9 +178,7 @@ async def login(message: Message, token: str = '') -> None:
                 )
                 create_user(user)
             await login.edit_text('Login realizado')
-            await context.storage_state(
-                path=f'{message.chat.username}.json'
-            )
+            await context.storage_state(path=f'{message.chat.id}.json')
         else:
             await login.edit_text('Login inválido')
         await browser.close()
@@ -207,7 +203,7 @@ async def configure_gale(message: Message) -> None:
 @login_required
 async def stop_bot(message: Message) -> None:
     await message.reply('Parou o bot')
-    user = get_user(message.from_user.id)
+    user = get_user(message.chat.id)
     user.is_betting = False
     edit_user(user)
 
@@ -215,14 +211,14 @@ async def stop_bot(message: Message) -> None:
 @login_required
 async def start_bot(message: Message) -> None:
     await message.reply('Bot iniciado')
-    user = get_user(message.from_user.id)
+    user = get_user(message.chat.id)
     user.is_betting = True
     exists_thread = bool(
-        [t for t in threading.enumerate() if t.name == user.name]
+        [t for t in threading.enumerate() if t.name == user.id]
     )
     if not exists_thread:
         threading.Thread(
-            name=user.name,
+            name=str(user.id),
             target=run_signals,
             args=[user],
         ).start()
@@ -232,7 +228,7 @@ async def start_bot(message: Message) -> None:
 @number_validator
 @login_required
 async def configure_stop(message: Message, for_result: str) -> None:
-    user = get_user(message.from_user.id)
+    user = get_user(message.chat.id)
     if for_result == 'win':
         edit_stop = await message.chat.ask(
             f'Seu Stop WIN atual é {user.stop_win}, deseja alterar? (s ou n)'
@@ -276,7 +272,7 @@ async def add_strategy(message: Message) -> None:
         await strategy.reply('Estratégia adicionada')
         strategy_text, bet_color = strategy.text.split(' = ')
         strategy = Strategy(
-            user_id=message.from_user.id,
+            user_id=message.chat.id,
             strategy=strategy_text,
             bet_color=bet_color,
             value=float(value.text.replace(',', '.')),
@@ -290,7 +286,7 @@ async def add_strategy(message: Message) -> None:
 @login_required
 async def remove_strategy(message: Message) -> None:
     strategy_id = await message.chat.ask('Digite o ID da estrátegia:')
-    user = get_user(message.from_user.id)
+    user = get_user(message.chat.id)
     if [
         s for s in get_strategies_from_user(user)
         if s.id == int(strategy_id.text)
@@ -307,7 +303,7 @@ async def show_strategies(message: Message) -> None:
     table.align['ID'] = 'l'
     table.align['Estratégia'] = 'c'
     table.align['Valor'] = 'l'
-    user = get_user(message.from_user.id)
+    user = get_user(message.chat.id)
     for strategy in get_strategies_from_user(user):
         table.add_row(
             [
@@ -333,7 +329,7 @@ async def run_signals_callback(user: User) -> None:
 async def create_browser(user: User) -> callable:
     async with async_playwright() as p:
         browser = await p.firefox.launch()
-        context = await browser.new_context(storage_state=f'{user.name}.json')
+        context = await browser.new_context(storage_state=f'{user.id}.json')
         page = await context.new_page()
         await page.goto('https://www.arbety.com/games/double')
         signals = await get_signals(page)

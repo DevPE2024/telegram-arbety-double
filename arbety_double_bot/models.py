@@ -3,6 +3,7 @@ from typing import List
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.types import BigInteger
 
 from arbety_double_bot.database import db
 
@@ -13,7 +14,7 @@ class Base(DeclarativeBase):
 
 class UserModel(Base):
     __tablename__ = 'users'
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     email: Mapped[str]
     password: Mapped[str]
     strategies: Mapped[List['StrategyModel']] = relationship(
