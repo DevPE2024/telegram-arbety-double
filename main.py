@@ -46,7 +46,7 @@ load_dotenv()
 
 @app.on_message(filters.command(['start']))
 async def start(client: Client, message: Message) -> None:
-    await show_main_menu(message.chat.username)
+    await show_main_menu(message.from_user.id)
 
 
 @app.on_callback_query()
@@ -68,7 +68,7 @@ async def answer(client, callback_query):
     await show_main_menu(callback_query.message.chat.username)
 
 
-async def show_main_menu(username: str) -> None:
+async def show_main_menu(user_id: int) -> None:
     menu = [
         [
             InlineKeyboardButton('⚙️ Login', callback_data='login'),
@@ -90,7 +90,7 @@ async def show_main_menu(username: str) -> None:
         ],
         [InlineKeyboardButton('Listar', callback_data='show')],
     ]
-    if username in os.environ['ADMS']:
+    if user_id in os.environ['ADMS']:
         menu.insert(
             0,
             [InlineKeyboardButton('Token', callback_data='token')]
