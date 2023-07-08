@@ -18,7 +18,7 @@ def create_user(user: User) -> None:
     with Session() as session:
         session.add(
             UserModel(
-                name=user.name,
+                id=user.id,
                 email=user.email,
                 password=user.password,
                 gale=user.gale,
@@ -53,10 +53,9 @@ def get_users() -> list[User]:
         ]
 
 
-def get_user_by_name(name: str) -> Union[User, None]:
+def get_user(user_id: int) -> Union[User, None]:
     with Session() as session:
-        query = select(UserModel).where(UserModel.name == name)
-        model = session.scalars(query).first()
+        model = session.get(UserModel, user_id)
         if model:
             return user_model_to_dataclass(model)
 
@@ -64,7 +63,6 @@ def get_user_by_name(name: str) -> Union[User, None]:
 def user_model_to_dataclass(model: UserModel) -> User:
     return User(
         id=model.id,
-        name=model.name,
         email=model.email,
         password=model.password,
         gale=model.gale,

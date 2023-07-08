@@ -27,7 +27,7 @@ from arbety_double_bot.repositories import (
     edit_user,
     get_bets_from_user,
     get_strategies_from_user,
-    get_user_by_name,
+    get_user,
     get_users,
     get_token,
     remove_strategy_by_id,
@@ -104,7 +104,7 @@ async def show_main_menu(username: str) -> None:
 
 def login_required(function: callable) -> callable:
     async def decorator(*args, **kwargs):
-        if get_user_by_name(args[0].chat.username):
+        if get_user(args[0].from_user.id):
             await function(*args, **kwargs)
         else:
             await args[0].reply('Primeiro faça o login')
@@ -161,7 +161,7 @@ async def login(message: Message, token: str = '') -> None:
         page = await context.new_page()
         await make_login(page, email.text, password.text)
         if await is_logged(page):
-            user = get_user_by_name(message.chat.username)
+            user = get_user(message.from_user.id)
             if user:
                 user.email = email.text
                 user.password = password.text
@@ -190,7 +190,7 @@ async def login(message: Message, token: str = '') -> None:
 @number_validator
 @login_required
 async def configure_gale(message: Message) -> None:
-    user = get_user_by_name(message.chat.username)
+    user = get_user(message.chat.username)
     edit_gale = await message.chat.ask(
         f'Seu gale atual é de {user.gale}, deseja alterar o gale? (s ou n)'
     )
@@ -206,7 +206,7 @@ async def configure_gale(message: Message) -> None:
 @login_required
 async def stop_bot(message: Message) -> None:
     await message.reply('Parou o bot')
-    user = get_user_by_name(message.chat.username)
+    user = get_user(message.from_user.id)
     user.is_betting = False
     edit_user(user)
 
@@ -214,7 +214,7 @@ async def stop_bot(message: Message) -> None:
 @login_required
 async def start_bot(message: Message) -> None:
     await message.reply('Bot iniciado')
-    user = get_user_by_name(message.chat.username)
+    user = get_user(message.from_user.id)
     user.is_betting = True
     exists_thread = bool(
         [t for t in threading.enumerate() if t.name == user.name]
@@ -231,7 +231,7 @@ async def start_bot(message: Message) -> None:
 @number_validator
 @login_required
 async def configure_stop(message: Message, for_result: str) -> None:
-    user = get_user_by_name(message.chat.username)
+    user = get_user(message.from_user.id)
     if for_result == 'win':
         edit_stop = await message.chat.ask(
             f'Seu Stop WIN atual é {user.stop_win}, deseja alterar? (s ou n)'
@@ -275,7 +275,7 @@ async def add_strategy(message: Message) -> None:
         await strategy.reply('Estratégia adicionada')
         strategy_text, bet_color = strategy.text.split(' = ')
         strategy = Strategy(
-            user_id=get_user_by_name(message.chat.username).id,
+            user_id=message.from_user.id,
             strategy=strategy_text,
             bet_color=bet_color,
             value=float(value.text.replace(',', '.')),
@@ -289,7 +289,7 @@ async def add_strategy(message: Message) -> None:
 @login_required
 async def remove_strategy(message: Message) -> None:
     strategy_id = await message.chat.ask('Digite o ID da estrátegia:')
-    user = get_user_by_name(message.chat.username)
+    user = get_user(message.from_user.id)
     if [
         s for s in get_strategies_from_user(user)
         if s.id == int(strategy_id.text)
@@ -306,7 +306,7 @@ async def show_strategies(message: Message) -> None:
     table.align['ID'] = 'l'
     table.align['Estratégia'] = 'c'
     table.align['Valor'] = 'l'
-    user = get_user_by_name(message.chat.username)
+    user = get_user(message.from_user.id)
     for strategy in get_strategies_from_user(user):
         table.add_row(
             [
@@ -337,7 +337,7 @@ async def create_browser(user: User) -> callable:
         await page.goto('https://www.arbety.com/games/double')
         signals = await get_signals(page)
         while True:
-            user = get_user_by_name(user.name)
+            user = get_user(user.id)
             if not user.is_betting:
                 break
             signals = await wait_for_new_signals(page, signals)

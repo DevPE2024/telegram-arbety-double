@@ -14,7 +14,6 @@ class Base(DeclarativeBase):
 class UserModel(Base):
     __tablename__ = 'users'
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
     email: Mapped[str]
     password: Mapped[str]
     strategies: Mapped[List['StrategyModel']] = relationship(
