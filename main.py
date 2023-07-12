@@ -1,5 +1,6 @@
 from datetime import date
 import asyncio
+from asyncio import gather, create_task
 import json
 import os
 import prettytable as pt
@@ -73,6 +74,7 @@ async def show_main_menu(user_id: int) -> None:
     menu = [
         [
             InlineKeyboardButton('⚙️ Login', callback_data='login'),
+            InlineKeyboardButton('🐔 Gale', callback_data='gale'),
         ],
         [
             InlineKeyboardButton('🔴 Parar bot', callback_data='stop_bot'),
@@ -173,7 +175,7 @@ async def login(message: Message, token: str = '') -> None:
                     gale=0,
                     stop_loss=0,
                     stop_win=0,
-                    is_betting=True,
+                    is_betting=False,
                     token=token,
                 )
                 create_user(user)
@@ -213,15 +215,6 @@ async def start_bot(message: Message) -> None:
     await message.reply('Bot iniciado')
     user = get_user(message.chat.id)
     user.is_betting = True
-    exists_thread = bool(
-        [t for t in threading.enumerate() if t.name == user.id]
-    )
-    if not exists_thread:
-        threading.Thread(
-            name=str(user.id),
-            target=run_signals,
-            args=[user],
-        ).start()
     edit_user(user)
 
 
@@ -315,57 +308,62 @@ async def show_strategies(message: Message) -> None:
     await message.reply(f'```\n{table}```')
 
 
-def run_signals(user: User) -> None:
+def run_signals() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(run_signals_callback(user))
+    loop.run_until_complete(run_signals_callback())
     loop.close()
 
 
-async def run_signals_callback(user: User) -> None:
-    await create_browser(user)
-
-
-async def create_browser(user: User) -> callable:
+async def run_signals_callback() -> None:
     async with async_playwright() as p:
         browser = await p.firefox.launch()
-        context = await browser.new_context(storage_state=f'{user.id}.json')
+        context = await browser.new_context()
         page = await context.new_page()
         await page.goto('https://www.arbety.com/games/double')
         signals = await get_signals(page)
         while True:
-            user = get_user(user.id)
-            if not user.is_betting:
-                break
             signals = await wait_for_new_signals(page, signals)
-            for strategy in get_strategies_from_user(user):
-                if re.compile(f'{strategy.strategy}$').findall(signals):
-                    value = get_bet_value(strategy)
-                    await to_bet(page, value, strategy.bet_color)
-                    await send_bet_confirmation_message(strategy, value)
-                    signals = await wait_for_new_signals(page, signals)
-                    await send_result_message(strategy, value, signals)
-                    exceeded_stop_loss = (
-                        0 != user.stop_loss >= get_profit(user)
-                    )
-                    exceeded_stop_win = 0 != user.stop_win <= get_profit(user)
-                    if exceeded_stop_loss or exceeded_stop_win:
-                        user.is_betting = False
-                        if exceeded_stop_loss:
-                            await app.send_message(
-                                user.id,
-                                'Bot parou, Stop LOSS atingido',
-                            )
-                            user.stop_loss *= 2
-                        elif exceeded_stop_win:
-                            await app.send_message(
-                                strategy.user.id,
-                                'Bot parou, Stop WIN atingido',
-                            )
-                            user.stop_win *= 2
-                        edit_user(user)
-                        break
-        await browser.close()
+            tasks = []
+            for user in [u for u in get_users() if u.is_betting]:
+                for strategy in get_strategies_from_user(user):
+                    strategy_first_colors = ' - '.join(strategy.strategy.split(' - ')[:-1])
+                    if strategy_first_colors == signals[-len(strategy_first_colors):]:
+                        tasks.append(create_task(to_bet_for_strategy(browser, strategy, signals)))
+            await gather(*tasks)
+
+
+async def to_bet_for_strategy(browser, strategy: Strategy, signals: str) -> None:
+    context = await browser.new_context(storage_state=f'{strategy.user.id}.json')
+    page = await context.new_page()
+    await page.goto('https://www.arbety.com/games/double')
+    signals = await wait_for_new_signals(page, signals)
+    if re.compile(f'{strategy.strategy}$').findall(signals):
+        value = get_bet_value(strategy)
+        await to_bet(page, value, strategy.bet_color)
+        await send_bet_confirmation_message(strategy, value)
+        signals = await wait_for_new_signals(page, signals)
+        await send_result_message(strategy, value, signals)
+        exceeded_stop_loss = (
+            0 != strategy.user.stop_loss >= get_profit(strategy.user)
+        )
+        exceeded_stop_win = 0 != strategy.user.stop_win <= get_profit(strategy.user)
+        if exceeded_stop_loss or exceeded_stop_win:
+            strategy.user.is_betting = False
+            if exceeded_stop_loss:
+                await app.send_message(
+                    strategy.user.id,
+                    'Bot parou, Stop LOSS atingido',
+                )
+                strategy.user.stop_loss *= 2
+            elif exceeded_stop_win:
+                await app.send_message(
+                    strategy.user.id,
+                    'Bot parou, Stop WIN atingido',
+                )
+                strategy.user.stop_win *= 2
+            edit_user(strategy.user)
+    await context.close()
 
 
 async def wait_for_new_signals(page, signals: str) -> str:
@@ -427,4 +425,5 @@ def get_profit(user: User) -> float:
 
 
 if __name__ == '__main__':
+    threading.Thread(target=run_signals).start()
     app.run()
